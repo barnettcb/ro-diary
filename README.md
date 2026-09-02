@@ -1,33 +1,11 @@
-# RO Diary
+# RO Diary Beta 0.2.5
 
-Private, local-first RO-DBT diary card and self-enquiry PWA.
+Private, local-first RO-DBT diary card beta.
 
-## Beta 0.2
+## Changes in 0.2.5
+- Skill-used selections update in place without redrawing the Today screen.
+- Therapist PDF share now sends only the named PDF file, avoiding the extra text attachment seen on iPhone.
+- Keeps the unique therapist PDF filename with date and time.
 
-- Fresh vault for real-use start; prior beta test data is discarded
-- Blue interface theme
-- 4-digit local passcode with encrypted diary vault
-- Thursday-Wednesday therapy week by default
-- Private behavior/urge/emotion ratings followed by social signals
-- 0-5 and Y/N target types; unanswered remains distinct from 0/No
-- Focus skills plus other skill logging
-- Multiple brief events with Discuss in Therapy flag
-- Edit and delete saved note/events
-- Self-enquiry prompt generator and saved/favorite questions
-- Weekly review and print/save-PDF report
-- Encrypted password-protected backup/restore
-- 5-minute background auto-lock
-- Offline PWA files bundled locally; no analytics or third-party runtime services
-
-This beta should be tested on the target iPhone before being treated as production-ready.
-
-
-## 0.2.4 beta
-- Improves Home Screen update behavior so new versions do not remain stuck behind the older offline cache.
-- Retains the 0.2.1 bottom navigation fix and expanded therapist report.
-
-
-## 0.2.4 changes
-- Rating taps no longer rebuild the Today screen, eliminating the scroll shudder.
-- Therapist PDF is generated as an actual local PDF file with a unique date/time filename.
-- PDF export uses the iPhone share sheet when available, preserving the generated filename for Save to Files.
+## Important
+This is still a beta. Keep current encrypted backups while testing.

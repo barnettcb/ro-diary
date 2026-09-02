@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.2.4-beta';
+const APP_VERSION = '0.2.5-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 1;
@@ -552,7 +552,7 @@ function bindApp(){
   $('#pdf-name')?.addEventListener('change',e=>{appState.profile.pdfName=e.target.value;queueSaveProfile();});
   $('#week-start')?.addEventListener('change',e=>{appState.profile.therapyWeekStart=Number(e.target.value);queueSaveProfile();});
 }
-function toggleSkill(id,checked,doRender=true){const d=getTodayEntry(); if(checked&&!d.skills.includes(id))d.skills.push(id); if(!checked)d.skills=d.skills.filter(x=>x!==id); d.modifiedAt=new Date().toISOString();queueSaveWeek(); if(doRender)render({preserveScroll:true});}
+function toggleSkill(id,checked,doRender=true){const d=getTodayEntry(); if(checked&&!d.skills.includes(id))d.skills.push(id); if(!checked)d.skills=d.skills.filter(x=>x!==id); d.modifiedAt=new Date().toISOString(); if(d.completed){d.completed=false;d.completedAt=null;} queueSaveWeek(); if(doRender){const pill=$('.topbar .status-pill');if(pill && appState.nav==='today' && !appState.page)pill.textContent='Private • Local';}}
 function toggleFocusSkill(id,checked){const w=appState.currentWeek;if(checked){if(w.focusSkills.length>=5){alert('Choose up to five focus skills.');render();return;} if(!w.focusSkills.includes(id))w.focusSkills.push(id);}else w.focusSkills=w.focusSkills.filter(x=>x!==id);queueSaveWeek();render();}
 function updateTargetField(kind,id,field,val){const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;const t=arr.find(x=>x.id===id);if(t){t[field]=val;queueSaveWeek();}}
 function deleteTarget(kind,id){const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;if(!confirm('Remove this target from the current week?'))return;const next=arr.filter(x=>x.id!==id);if(kind==='private')appState.currentWeek.privateTargets=next;else appState.currentWeek.socialTargets=next;queueSaveWeek();render();}
@@ -598,7 +598,7 @@ async function printTherapistReport(){
     const file=new File([blob],filename,{type:'application/pdf'});
     if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
       try{
-        await navigator.share({files:[file],title:'RO Diary Therapist PDF'});
+        await navigator.share({files:[file]});
         return;
       }catch(shareError){
         if(shareError?.name==='AbortError') return;
