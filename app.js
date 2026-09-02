@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.2.3-beta';
+const APP_VERSION = '0.2.4-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 1;
@@ -330,7 +330,20 @@ function getTodayEntry() {
   return w.days[ds];
 }
 function targetValue(day,id){ return Object.prototype.hasOwnProperty.call(day.ratings,id) ? day.ratings[id] : null; }
-function setTargetValue(day,id,val){ day.ratings[id]=val; day.modifiedAt=new Date().toISOString(); if(day.completed){day.completed=false;day.completedAt=null;} queueSaveWeek(); render({preserveScroll:true}); }
+function setTargetValue(day,id,val){
+  day.ratings[id]=val;
+  day.modifiedAt=new Date().toISOString();
+  if(day.completed){day.completed=false;day.completedAt=null;}
+  queueSaveWeek();
+  // Keep the Today screen completely still while rating. Update only the tapped target.
+  $$(`[data-target="${CSS.escape(id)}"]`).forEach(btn=>{
+    let btnVal=btn.dataset.value;
+    if(btnVal==='true') btnVal=true; else if(btnVal==='false') btnVal=false; else btnVal=Number(btnVal);
+    btn.classList.toggle('selected', btnVal===val);
+  });
+  const pill=$('.topbar .status-pill');
+  if(pill && appState.nav==='today' && !appState.page) pill.textContent='Private • Local';
+}
 function skillName(id){ return SKILLS.find(s=>s.id===id)?.name || id; }
 function promptById(id){ return SE_PROMPTS.find(p=>p.id===id); }
 
@@ -448,7 +461,7 @@ function renderReview(){const w=appState.currentWeek; const dates=weekDates(w); 
  <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body">${Object.keys(skillMap).length?Object.entries(skillMap).map(([s,ds])=>`<div class="list-row"><strong>${escapeHtml(skillName(s))}</strong><span class="small">${ds.join(', ')}</span></div>`).join(''):'<div class="subtle">No skills recorded.</div>'}</div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry</div></div><div class="card-body"><div><strong>Weekly focus:</strong><br>${escapeHtml(w.weeklySEFocus||'—')}</div><div style="margin-top:10px"><strong>Saved questions:</strong> ${w.savedSEPrompts.length}</div></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Week context</div></div><div class="card-body"><div><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div style="margin-top:8px"><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div></div></section>
- <section class="card"><div class="card-body"><button class="btn primary wide" data-action="print-report">Print / Save Therapist PDF</button><button class="btn wide" style="margin-top:8px" data-action="backup">Create Encrypted Backup</button></div></section>`;}
+ <section class="card"><div class="card-body"><button class="btn primary wide" data-action="print-report">Export Therapist PDF</button><button class="btn wide" style="margin-top:8px" data-action="backup">Create Encrypted Backup</button></div></section>`;}
 
 function renderMore(){ const p=appState.profile; return `<h1 class="page-title">More</h1><section class="card"><div class="card-body menu-list">
   <button class="btn" data-page="week-setup">Week Setup</button><button class="btn" data-page="archive">Archive</button><button class="btn" data-page="skills">RO Skills Reference</button><button class="btn" data-page="settings">Settings</button>
@@ -552,14 +565,52 @@ function pdfFilenameBase(date=new Date()){
   const stamp=`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}_${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
   return `RO-Diary-${filenameSafePart(appState.profile?.pdfName||'')}-${stamp}`;
 }
-function printTherapistReport(){
-  const originalTitle=document.title;
-  document.title=pdfFilenameBase();
-  let restored=false;
-  const restoreTitle=()=>{if(restored)return;restored=true;document.title=originalTitle;window.removeEventListener('afterprint',restoreTitle);};
-  window.addEventListener('afterprint',restoreTitle,{once:true});
-  setTimeout(restoreTitle,30000);
-  window.print();
+function buildPdfReportData(){
+  const w=appState.currentWeek; const dates=weekDates(w);
+  const ratingRows=targets=>targets.map(t=>[t.label,...dates.map(d=>{const v=targetValue(w.days[d],t.id);return v===null?'—':typeof v==='boolean'?(v?'Y':'N'):String(v);})]);
+  const completion=dates.map(d=>({day:fmtDay(d),date:fmtDate(d,{month:'numeric',day:'numeric'}),status:w.days[d].completed?'Complete':'Incomplete'}));
+  const usedSkills=SKILLS.filter(s=>dates.some(d=>w.days[d].skills.includes(s.id))).map(s=>({name:s.name,days:dates.filter(d=>w.days[d].skills.includes(s.id)).map(fmtDay)}));
+  const events=dates.flatMap(d=>w.days[d].events.map(e=>({day:fmtDay(d),date:fmtDate(d,{month:'numeric',day:'numeric'}),context:e.context||'',note:e.note||'',discuss:!!e.discuss})));
+  const saved=w.savedSEPrompts.map(promptById).filter(Boolean).map(p=>p.text);
+  return {
+    title:`RO Diary — ${appState.profile.pdfName||''}`,
+    week:`Therapy week ${fmtDate(w.startDate,{month:'short',day:'numeric',year:'numeric'})} – ${fmtDate(w.endDate,{month:'short',day:'numeric',year:'numeric'})}`,
+    completion,
+    dayHeaders:completion.map(x=>`${x.day} ${x.date}`),
+    privateRows:ratingRows(w.privateTargets),
+    socialRows:ratingRows(w.socialTargets),
+    skills:usedSkills,
+    events,
+    weeklySEFocus:w.weeklySEFocus||'—',
+    savedQuestions:saved,
+    homework:w.homework||'—',
+    valuedGoal:w.valuedGoal||'—',
+    majorOCTheme:(w.majorOCThemeEnabled && w.majorOCTheme)?w.majorOCTheme:'',
+    generated:`Generated locally by RO Diary ${APP_VERSION} • ${new Date().toLocaleString()}`
+  };
+}
+async function printTherapistReport(){
+  try{
+    if(!window.RODiaryPDF?.buildPdfBytes) throw new Error('PDF export component is unavailable.');
+    const filename=`${pdfFilenameBase()}.pdf`;
+    const bytes=window.RODiaryPDF.buildPdfBytes(buildPdfReportData());
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const file=new File([blob],filename,{type:'application/pdf'});
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      try{
+        await navigator.share({files:[file],title:'RO Diary Therapist PDF'});
+        return;
+      }catch(shareError){
+        if(shareError?.name==='AbortError') return;
+        // If file sharing is unavailable in this browser state, fall back to a named download.
+      }
+    }
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e){
+    alert(`PDF export failed: ${e.message||e}`);
+  }
 }
 
 async function handleAction(a,b){

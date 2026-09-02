@@ -22,6 +22,12 @@ Private, local-first RO-DBT diary card and self-enquiry PWA.
 This beta should be tested on the target iPhone before being treated as production-ready.
 
 
-## 0.2.3 beta
+## 0.2.4 beta
 - Improves Home Screen update behavior so new versions do not remain stuck behind the older offline cache.
 - Retains the 0.2.1 bottom navigation fix and expanded therapist report.
+
+
+## 0.2.4 changes
+- Rating taps no longer rebuild the Today screen, eliminating the scroll shudder.
+- Therapist PDF is generated as an actual local PDF file with a unique date/time filename.
+- PDF export uses the iPhone share sheet when available, preserving the generated filename for Save to Files.
