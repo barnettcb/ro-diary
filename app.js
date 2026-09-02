@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.2.0-beta';
+const APP_VERSION = '0.2.1-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 1;
@@ -475,8 +475,27 @@ function renderModal(){ const m=appState.modal; if(!m) return '';
 
 function renderArchiveModal(w){const dates=weekDates(w); return `<div class="modal-backdrop"><div class="modal"><h2>${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</h2><div class="section-kicker">Private</div>${renderRatingsTable(w.privateTargets,w)}<div class="section-kicker" style="margin-top:14px">Social</div>${renderRatingsTable(w.socialTargets,w)}<div class="section-kicker" style="margin-top:14px">Discuss in Therapy</div>${dates.flatMap(d=>w.days[d].events.filter(e=>e.discuss).map(e=>`<div class="event-card"><strong>${fmtDay(d)} — ${escapeHtml(e.context)}</strong><div>${escapeHtml(e.note)}</div></div>`)).join('')||'<div class="subtle">None flagged.</div>'}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button></div></div>`;}
 
-function renderPrintReport(){ if(appState.locked || !appState.currentWeek) return ''; const w=appState.currentWeek; const dates=weekDates(w); const flagged=dates.flatMap(d=>w.days[d].events.filter(e=>e.discuss).map(e=>({...e,date:d})));
-  return `<div class="print-report"><h1>RO Diary — ${escapeHtml(appState.profile.pdfName||'')}</h1><div>Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div><h2>Private Behaviors, Emotions & Urges</h2>${renderRatingsTable(w.privateTargets,w)}<h2>Social Signals & Overt Behaviors</h2>${renderRatingsTable(w.socialTargets,w)}<h2>Discuss in Therapy</h2>${flagged.length?flagged.map(e=>`<div class="event-card"><strong>${fmtDay(e.date)} — ${escapeHtml(e.context)}</strong><div>${escapeHtml(e.note)}</div></div>`).join(''):'<div>None flagged.</div>'}<h2>Weekly Self-Enquiry Focus</h2><div>${escapeHtml(w.weeklySEFocus||'—')}</div><h2>Homework</h2><div>${escapeHtml(w.homework||'—')}</div><h2>Valued Goal</h2><div>${escapeHtml(w.valuedGoal||'—')}</div></div>`;}
+function renderPrintRatingsTable(targets,w){const dates=weekDates(w);return `<table class="report-table"><thead><tr><th>Target</th>${dates.map(d=>`<th>${fmtDay(d)}<br><span>${fmtDate(d,{month:'numeric',day:'numeric'})}</span></th>`).join('')}</tr></thead><tbody>${targets.map(t=>`<tr><td>${escapeHtml(t.label)}</td>${dates.map(d=>{const v=targetValue(w.days[d],t.id);return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table>`;}
+function renderPrintCompletion(w){const dates=weekDates(w);return `<table class="report-table completion-table"><thead><tr>${dates.map(d=>`<th>${fmtDay(d)}<br><span>${fmtDate(d,{month:'numeric',day:'numeric'})}</span></th>`).join('')}</tr></thead><tbody><tr>${dates.map(d=>`<td>${w.days[d].completed?'Complete':'Incomplete'}</td>`).join('')}</tr></tbody></table>`;}
+function renderPrintSkills(w){const dates=weekDates(w);const used=SKILLS.filter(s=>dates.some(d=>w.days[d].skills.includes(s.id)));if(!used.length)return '<div class="report-empty">No skills recorded.</div>';return `<table class="report-table"><thead><tr><th>Skill</th>${dates.map(d=>`<th>${fmtDay(d)}</th>`).join('')}</tr></thead><tbody>${used.map(s=>`<tr><td>${escapeHtml(s.name)}</td>${dates.map(d=>`<td>${w.days[d].skills.includes(s.id)?'✓':''}</td>`).join('')}</tr>`).join('')}</tbody></table>`;}
+function renderPrintReport(){
+  if(appState.locked || !appState.currentWeek) return '';
+  const w=appState.currentWeek; const dates=weekDates(w);
+  const events=dates.flatMap(d=>w.days[d].events.map(e=>({...e,date:d})));
+  const saved=w.savedSEPrompts.map(promptById).filter(Boolean);
+  const oc=(w.majorOCThemeEnabled && w.majorOCTheme)?`<div class="report-context-row"><strong>Major OC Theme:</strong> ${escapeHtml(w.majorOCTheme)}</div>`:'';
+  return `<div class="print-report">
+    <div class="report-heading"><div><h1>RO Diary — ${escapeHtml(appState.profile.pdfName||'')}</h1><div class="report-meta">Therapy week ${fmtDate(w.startDate,{month:'short',day:'numeric',year:'numeric'})} – ${fmtDate(w.endDate,{month:'short',day:'numeric',year:'numeric'})}</div></div></div>
+    <h2>Completion</h2>${renderPrintCompletion(w)}
+    <h2>Private Behaviors, Emotions & Urges</h2>${renderPrintRatingsTable(w.privateTargets,w)}
+    <h2>Social Signals & Overt Behaviors</h2>${renderPrintRatingsTable(w.socialTargets,w)}
+    <h2>Skills Used</h2>${renderPrintSkills(w)}
+    <h2>Notes / Events</h2>${events.length?events.map(e=>`<div class="report-event ${e.discuss?'report-event-flagged':''}"><div><strong>${fmtDay(e.date)} ${fmtDate(e.date,{month:'numeric',day:'numeric'})}${e.context?` — ${escapeHtml(e.context)}`:''}</strong>${e.discuss?' <span class="report-flag">Discuss in Therapy</span>':''}</div>${e.note?`<div class="report-event-note">${escapeHtml(e.note)}</div>`:''}</div>`).join(''):'<div class="report-empty">No notes or events recorded.</div>'}
+    <h2>Self-Enquiry</h2><div class="report-context-row"><strong>Weekly focus:</strong> ${escapeHtml(w.weeklySEFocus||'—')}</div>${saved.length?`<div class="report-context-row"><strong>Saved questions this week:</strong><ul>${saved.map(p=>`<li>${escapeHtml(p.text)}</li>`).join('')}</ul></div>`:''}
+    <h2>Week Context</h2><div class="report-context-row"><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div class="report-context-row"><strong>Valued Goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${oc}
+    <div class="report-footer">Generated locally by RO Diary ${APP_VERSION}</div>
+  </div>`;
+}
 
 function bindLock(){
   $$('[data-pin]').forEach(b=>b.addEventListener('click',()=>handlePinDigit(b.dataset.pin)));
