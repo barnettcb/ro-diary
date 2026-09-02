@@ -22,6 +22,6 @@ Private, local-first RO-DBT diary card and self-enquiry PWA.
 This beta should be tested on the target iPhone before being treated as production-ready.
 
 
-## 0.2.2 beta
+## 0.2.3 beta
 - Improves Home Screen update behavior so new versions do not remain stuck behind the older offline cache.
 - Retains the 0.2.1 bottom navigation fix and expanded therapist report.

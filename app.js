@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.2.2-beta';
+const APP_VERSION = '0.2.3-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 1;
@@ -330,14 +330,22 @@ function getTodayEntry() {
   return w.days[ds];
 }
 function targetValue(day,id){ return Object.prototype.hasOwnProperty.call(day.ratings,id) ? day.ratings[id] : null; }
-function setTargetValue(day,id,val){ day.ratings[id]=val; day.modifiedAt=new Date().toISOString(); if(day.completed){day.completed=false;day.completedAt=null;} queueSaveWeek(); render(); }
+function setTargetValue(day,id,val){ day.ratings[id]=val; day.modifiedAt=new Date().toISOString(); if(day.completed){day.completed=false;day.completedAt=null;} queueSaveWeek(); render({preserveScroll:true}); }
 function skillName(id){ return SKILLS.find(s=>s.id===id)?.name || id; }
 function promptById(id){ return SE_PROMPTS.find(p=>p.id===id); }
 
-function render() {
+function render(options={}) {
   const root=document.getElementById('app'); if(!root) return;
+  const previousContent=root.querySelector('.content');
+  const previousScrollTop=options.preserveScroll && previousContent ? previousContent.scrollTop : null;
   if(appState.setupNeeded || appState.locked){ root.innerHTML=renderLock(); bindLock(); return; }
   root.innerHTML=`${renderAppShell()}${renderModal()}${renderPrintReport()}`; bindApp();
+  if(previousScrollTop!==null){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const content=root.querySelector('.content');
+      if(content) content.scrollTop=previousScrollTop;
+    }));
+  }
 }
 
 function renderLock() {
@@ -493,7 +501,7 @@ function renderPrintReport(){
     <h2>Notes / Events</h2>${events.length?events.map(e=>`<div class="report-event ${e.discuss?'report-event-flagged':''}"><div><strong>${fmtDay(e.date)} ${fmtDate(e.date,{month:'numeric',day:'numeric'})}${e.context?` — ${escapeHtml(e.context)}`:''}</strong>${e.discuss?' <span class="report-flag">Discuss in Therapy</span>':''}</div>${e.note?`<div class="report-event-note">${escapeHtml(e.note)}</div>`:''}</div>`).join(''):'<div class="report-empty">No notes or events recorded.</div>'}
     <h2>Self-Enquiry</h2><div class="report-context-row"><strong>Weekly focus:</strong> ${escapeHtml(w.weeklySEFocus||'—')}</div>${saved.length?`<div class="report-context-row"><strong>Saved questions this week:</strong><ul>${saved.map(p=>`<li>${escapeHtml(p.text)}</li>`).join('')}</ul></div>`:''}
     <h2>Week Context</h2><div class="report-context-row"><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div class="report-context-row"><strong>Valued Goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${oc}
-    <div class="report-footer">Generated locally by RO Diary ${APP_VERSION}</div>
+    <div class="report-footer">Generated locally by RO Diary ${APP_VERSION} • ${escapeHtml(new Date().toLocaleString())}</div>
   </div>`;
 }
 
@@ -531,10 +539,28 @@ function bindApp(){
   $('#pdf-name')?.addEventListener('change',e=>{appState.profile.pdfName=e.target.value;queueSaveProfile();});
   $('#week-start')?.addEventListener('change',e=>{appState.profile.therapyWeekStart=Number(e.target.value);queueSaveProfile();});
 }
-function toggleSkill(id,checked,doRender=true){const d=getTodayEntry(); if(checked&&!d.skills.includes(id))d.skills.push(id); if(!checked)d.skills=d.skills.filter(x=>x!==id); d.modifiedAt=new Date().toISOString();queueSaveWeek(); if(doRender)render();}
+function toggleSkill(id,checked,doRender=true){const d=getTodayEntry(); if(checked&&!d.skills.includes(id))d.skills.push(id); if(!checked)d.skills=d.skills.filter(x=>x!==id); d.modifiedAt=new Date().toISOString();queueSaveWeek(); if(doRender)render({preserveScroll:true});}
 function toggleFocusSkill(id,checked){const w=appState.currentWeek;if(checked){if(w.focusSkills.length>=5){alert('Choose up to five focus skills.');render();return;} if(!w.focusSkills.includes(id))w.focusSkills.push(id);}else w.focusSkills=w.focusSkills.filter(x=>x!==id);queueSaveWeek();render();}
 function updateTargetField(kind,id,field,val){const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;const t=arr.find(x=>x.id===id);if(t){t[field]=val;queueSaveWeek();}}
 function deleteTarget(kind,id){const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;if(!confirm('Remove this target from the current week?'))return;const next=arr.filter(x=>x.id!==id);if(kind==='private')appState.currentWeek.privateTargets=next;else appState.currentWeek.socialTargets=next;queueSaveWeek();render();}
+
+function filenameSafePart(value){
+  return String(value||'').trim().replace(/[^A-Za-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'') || 'Diary';
+}
+function pdfFilenameBase(date=new Date()){
+  const pad=n=>String(n).padStart(2,'0');
+  const stamp=`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}_${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
+  return `RO-Diary-${filenameSafePart(appState.profile?.pdfName||'')}-${stamp}`;
+}
+function printTherapistReport(){
+  const originalTitle=document.title;
+  document.title=pdfFilenameBase();
+  let restored=false;
+  const restoreTitle=()=>{if(restored)return;restored=true;document.title=originalTitle;window.removeEventListener('afterprint',restoreTitle);};
+  window.addEventListener('afterprint',restoreTitle,{once:true});
+  setTimeout(restoreTitle,30000);
+  window.print();
+}
 
 async function handleAction(a,b){
   if(a==='close-modal'){appState.modal=null;render();return;}
@@ -554,7 +580,7 @@ async function handleAction(a,b){
   if(a==='saved-questions'){appState.modal={type:'saved-questions'};render();return;}
   if(a==='add-my-question'){appState.modal={type:'my-question'};render();return;}
   if(a==='save-my-question'){const text=$('#my-question-text')?.value.trim();if(text){appState.profile.myQuestions.push({id:uid(),text,createdAt:new Date().toISOString()});queueSaveProfile();}appState.modal=null;render();return;}
-  if(a==='print-report'){window.print();return;}
+  if(a==='print-report'){printTherapistReport();return;}
   if(a==='backup'){appState.modal={type:'backup-password',error:''};render();return;}
   if(a==='do-backup'){await createBackupFromModal();return;}
   if(a==='restore'){pickRestoreFile();return;}
@@ -587,7 +613,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.2.2').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.2.3').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 
