@@ -1,8 +1,9 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.1.0-beta';
-const DB_NAME = 'ro-diary-db';
+const APP_VERSION = '0.2.0-beta';
+const DB_NAME = 'ro-diary-db-v2';
+const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 1;
 const PIN_ITERATIONS = 220000;
 const BACKUP_ITERATIONS = 600000;
@@ -410,7 +411,7 @@ function renderToday(day) {
       <button class="btn soft wide" style="margin-top:10px" data-action="add-event">+ Add Note / Event</button></div></section>
     <section class="card"><div class="card-body">${day.completed?`<div class="notice success-notice">Completed ${new Date(day.completedAt).toLocaleString()}</div>`:''}<button class="btn primary wide" data-action="complete-day">${day.completed?'Review Completion':'Complete Today'}</button></div></section>`;
 }
-function renderEvent(e){return `<div class="event-card"><div class="event-context">${escapeHtml(e.context||'Event')}</div><div class="event-note">${escapeHtml(e.note||'')}</div>${e.discuss?'<div class="flag">★ Discuss in Therapy</div>':''}</div>`;}
+function renderEvent(e){return `<div class="event-card"><div class="event-context">${escapeHtml(e.context||'Event')}</div><div class="event-note">${escapeHtml(e.note||'')}</div>${e.discuss?'<div class="flag">★ Discuss in Therapy</div>':''}<div class="event-actions"><button class="btn" data-action="edit-event" data-event-id="${e.id}">Edit</button><button class="btn danger" data-action="delete-event" data-event-id="${e.id}">Delete</button></div></div>`;}
 
 function choosePrompt() {
   const blocked=new Set(appState.profile.notUsefulPromptIds||[]); let pool=SE_PROMPTS.filter(p=>!blocked.has(p.id));
@@ -460,7 +461,7 @@ function renderSettings(){return `<button class="btn" data-action="back-page">�
 
 function renderModal(){ const m=appState.modal; if(!m) return '';
   if(m.type==='info'){ const t=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets].find(x=>x.id===m.targetId); if(!t) return ''; return `<div class="modal-backdrop"><div class="modal"><h2>${escapeHtml(t.label)}</h2><p>${escapeHtml(t.definition||'No definition entered.')}</p>${t.type==='scale'?`<div>${SCALE_ANCHORS.map(a=>`<div class="list-row"><span>${escapeHtml(a)}</span></div>`).join('')}</div>`:'<div class="subtle">Answer Yes or No. Unanswered remains blank.</div>'}<button class="btn primary wide" data-action="close-modal">Close</button></div></div>`; }
-  if(m.type==='event') return `<div class="modal-backdrop"><div class="modal"><h2>Add Event</h2><div class="field"><label>Context</label><input id="event-context" placeholder="Conversation after work"></div><div class="field"><label>Brief Note</label><textarea id="event-note" placeholder="Enough context to remember what happened later."></textarea></div><label class="check-row"><input type="checkbox" id="event-discuss"><span>Discuss in Therapy</span></label><div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="save-event">Save Event</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+  if(m.type==='event'){ const existing=m.eventId?getTodayEntry().events.find(e=>e.id===m.eventId):null; return `<div class="modal-backdrop"><div class="modal"><h2>${existing?'Edit Event':'Add Event'}</h2><div class="field"><label>Context</label><input id="event-context" placeholder="Conversation after work" value="${escapeHtml(existing?.context||'')}"></div><div class="field"><label>Brief Note</label><textarea id="event-note" placeholder="Enough context to remember what happened later.">${escapeHtml(existing?.note||'')}</textarea></div><label class="check-row"><input type="checkbox" id="event-discuss" ${existing?.discuss?'checked':''}><span>Discuss in Therapy</span></label><div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="save-event" data-event-id="${existing?.id||''}">${existing?'Save Changes':'Save Event'}</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;}
   if(m.type==='other-skill') return `<div class="modal-backdrop"><div class="modal"><h2>Other RO Skill</h2><div class="checkbox-list">${SKILLS.filter(s=>!appState.currentWeek.focusSkills.includes(s.id)).map(s=>`<label class="check-row"><input type="checkbox" data-other-skill="${s.id}" ${getTodayEntry().skills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Done</button></div></div>`;
   if(m.type==='saved-questions'){ const w=appState.currentWeek; const saved=w.savedSEPrompts.map(promptById).filter(Boolean); const fav=appState.profile.favoritePromptIds.map(promptById).filter(Boolean); return `<div class="modal-backdrop"><div class="modal"><h2>Saved Questions</h2><div class="section-kicker">This Week</div>${saved.length?saved.map(p=>`<div class="event-card">${escapeHtml(p.text)}</div>`).join(''):'<div class="subtle">None saved this week.</div>'}<div class="section-kicker" style="margin-top:16px">Favorites</div>${fav.length?fav.map(p=>`<div class="event-card">${escapeHtml(p.text)}</div>`).join(''):'<div class="subtle">No favorites yet.</div>'}<div class="section-kicker" style="margin-top:16px">My Questions</div>${appState.profile.myQuestions.length?appState.profile.myQuestions.map(q=>`<div class="event-card">${escapeHtml(q.text)}</div>`).join(''):'<div class="subtle">No personal questions yet.</div>'}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button></div></div>`;}
   if(m.type==='my-question') return `<div class="modal-backdrop"><div class="modal"><h2>Add My Question</h2><div class="field"><label>Question</label><textarea id="my-question-text"></textarea></div><div class="btn-row"><button class="btn primary" data-action="save-my-question">Save</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
@@ -521,7 +522,9 @@ async function handleAction(a,b){
   if(a==='other-skill'){appState.modal={type:'other-skill'};render();return;}
   if(a==='go-se'){appState.nav='se';appState.page=null;render();return;}
   if(a==='add-event'){appState.modal={type:'event'};render();return;}
-  if(a==='save-event'){const ctx=$('#event-context')?.value.trim()||'';const note=$('#event-note')?.value.trim()||'';const discuss=$('#event-discuss')?.checked||false;if(!ctx&&!note){return;}getTodayEntry().events.push({id:uid(),context:ctx,note,discuss,createdAt:new Date().toISOString()});queueSaveWeek();appState.modal=null;render();return;}
+  if(a==='edit-event'){appState.modal={type:'event',eventId:b.dataset.eventId};render();return;}
+  if(a==='delete-event'){const day=getTodayEntry();const eventId=b.dataset.eventId;if(!confirm('Delete this note/event?'))return;day.events=day.events.filter(e=>e.id!==eventId);day.modifiedAt=new Date().toISOString();queueSaveWeek();render();return;}
+  if(a==='save-event'){const ctx=$('#event-context')?.value.trim()||'';const note=$('#event-note')?.value.trim()||'';const discuss=$('#event-discuss')?.checked||false;if(!ctx&&!note){return;}const day=getTodayEntry();const eventId=b.dataset.eventId||'';const existing=eventId?day.events.find(e=>e.id===eventId):null;if(existing){existing.context=ctx;existing.note=note;existing.discuss=discuss;existing.modifiedAt=new Date().toISOString();}else{day.events.push({id:uid(),context:ctx,note,discuss,createdAt:new Date().toISOString(),modifiedAt:new Date().toISOString()});}day.modifiedAt=new Date().toISOString();queueSaveWeek();appState.modal=null;render();return;}
   if(a==='complete-day'){const d=getTodayEntry();const all=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets];const missing=all.filter(t=>targetValue(d,t.id)===null).map(t=>({id:t.id,label:t.label,type:t.type}));appState.modal={type:'complete',missing};render();return;}
   if(a==='fill-zero-complete'){const d=getTodayEntry();for(const x of appState.modal.missing)d.ratings[x.id]=x.type==='yn'?false:0;completeDay(d);return;}
   if(a==='confirm-complete'){completeDay(getTodayEntry());return;}
@@ -559,8 +562,11 @@ async function restoreFromModal(){const pass=$('#restore-pass')?.value||'';try{a
 
 async function changePinFromModal(){const oldPin=$('#old-pin')?.value||'';const n1=$('#new-pin1')?.value||'';const n2=$('#new-pin2')?.value||'';if(!/^\d{4}$/.test(oldPin)||!/^\d{4}$/.test(n1)){appState.modal.error='Passcodes must be exactly 4 digits.';render();return;}if(n1!==n2){appState.modal.error='New passcodes do not match.';render();return;}try{const deviceKey=await idbGet('secure','deviceKey');const wrap=await idbGet('secure','vaultWrap');const oldKey=await derivePinKey(oldPin,b64ToArr(wrap.pinSalt));const innerBytes=await aesDecrypt(oldKey,{iv:b64ToArr(wrap.pinIv),data:b64ToArr(wrap.pinData)});const newSalt=randomBytes(16);const newKey=await derivePinKey(n1,newSalt);const newWrap=await aesEncrypt(newKey,innerBytes);await idbPut('secure','vaultWrap',{pinSalt:arrToB64(newSalt),pinIv:arrToB64(newWrap.iv),pinData:arrToB64(newWrap.data)});appState.modal=null;render();}catch(e){appState.modal.error='Current passcode is incorrect.';render();}}
 
+function deleteLegacyDatabase(name){return new Promise(resolve=>{try{const req=indexedDB.deleteDatabase(name);req.onsuccess=req.onerror=req.onblocked=()=>resolve();}catch(_){resolve();}});}
+
 async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
+  for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
   if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});

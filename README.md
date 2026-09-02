@@ -2,14 +2,17 @@
 
 Private, local-first RO-DBT diary card and self-enquiry PWA.
 
-## Beta 0.1
+## Beta 0.2
 
+- Fresh vault for real-use start; prior beta test data is discarded
+- Blue interface theme
 - 4-digit local passcode with encrypted diary vault
 - Thursday-Wednesday therapy week by default
 - Private behavior/urge/emotion ratings followed by social signals
 - 0-5 and Y/N target types; unanswered remains distinct from 0/No
 - Focus skills plus other skill logging
 - Multiple brief events with Discuss in Therapy flag
+- Edit and delete saved note/events
 - Self-enquiry prompt generator and saved/favorite questions
 - Weekly review and print/save-PDF report
 - Encrypted password-protected backup/restore
