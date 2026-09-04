@@ -94,7 +94,9 @@ th, td { padding:7px 5px; text-align:center; border-bottom:1px solid #eceae4; wh
 th:first-child, td:first-child { text-align:left; position:sticky; left:0; background:var(--panel); max-width:150px; overflow:hidden; text-overflow:ellipsis; }
 .menu-list .btn { width:100%; text-align:left; margin:5px 0; }
 .inline-edit { display:grid; gap:8px; padding:11px 0; border-bottom:1px solid #eceae4; }
-.inline-edit-row { display:grid; grid-template-columns:1fr 90px 44px; gap:7px; align-items:center; }
+.inline-edit-row { display:grid; grid-template-columns:minmax(0,1fr) 82px 42px; gap:6px; align-items:center; }
+.inline-edit-row > input, .inline-edit-row > select { min-width:0; width:100%; }
+.inline-edit-row > .btn { min-width:0; width:42px; padding-left:0; padding-right:0; }
 .small { font-size:12px; }
 .print-report { display:none; }
 @media (min-width:700px) {
