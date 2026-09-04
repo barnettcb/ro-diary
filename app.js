@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.2-beta';
+const APP_VERSION = '0.5.3-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 1;
@@ -680,18 +680,18 @@ function renderWeekSetup(){const w=appState.currentWeek; return `<div class="btn
 function renderSetupGuide(){return `<button class="btn" data-action="back-guide">← Back</button><h1 class="page-title">How to Set Up Your Diary Card</h1>
  <div class="subtle">A practical guide for choosing a small, useful card that can change as therapy changes.</div>
  <section class="card"><div class="card-header"><div class="section-kicker">Purpose</div><div class="section-title">What the diary card is for</div></div><div class="card-body guide-copy">
-   <p>Use the card to capture the week clearly enough that you and your therapist can quickly identify important patterns and events. Targets are individualized; the examples in this app are not universal RO-DBT targets.</p>
+   <p>Use the card to capture the week clearly enough that you and your therapist can quickly identify important patterns and events. Targets are selected to match the behaviors and experiences that are most useful to track in the current treatment focus, and they can change as therapy changes.</p>
    <p>Keep the card manageable. A smaller set of specific targets that you actually complete is more useful than a large checklist that becomes burdensome.</p>
  </div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">1</div><div class="section-title">Choose your therapy week</div></div><div class="card-body guide-copy"><p>Select the day your therapy week begins. RO Diary tracks seven days from that point. Changing the start day affects future weeks only; archived weeks keep their original dates.</p></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">2</div><div class="section-title">Choose Social Signals / Overt Behaviors</div></div><div class="card-body guide-copy">
    <p>These are concrete things another person could observe in your words, tone, face, posture, timing, or behavior. Choose signals that are relevant to your current treatment goals.</p>
-   <div class="guide-example"><strong>Examples:</strong> defensive explaining/correcting, withdrawing or shutting down, forceful tone, or appeasing to avoid conflict.</div>
-   <div class="guide-example"><strong>More useful:</strong> “Defensive explaining/correcting/rebutting”<br><strong>Less specific:</strong> “Being defensive”</div>
+   <div class="guide-example"><strong>Examples from RO-DBT treatment materials:</strong> walking away from conflict, going quiet when annoyed, telling other people what to do, smiling while angry, a flat or stony expression, or a sharp/strident voice tone.</div>
+   <div class="guide-example"><strong>Aim for something concrete:</strong> “walking away from conflict” or “going quiet when annoyed” is easier to observe and rate than a broad label.</div>
  </div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">3</div><div class="section-title">Choose Private Behaviors, Emotions & Urges</div></div><div class="card-body guide-copy">
    <p>These are internal experiences that may occur before or alongside a social signal: thoughts, emotions, body sensations, or urges. They can help you examine whether internal activation and outward behavior actually occurred together.</p>
-   <div class="guide-example"><strong>Examples:</strong> irritation, physical activation, urge to defend/explain, shame or embarrassment, urge to avoid, or urge to appease.</div>
+   <div class="guide-example"><strong>Examples from RO-DBT treatment materials:</strong> anger or annoyance, thoughts about not being appreciated, resentment, envy or bitterness, urges for revenge, feeling tense/agitated/hot, or feeling numb/detached.</div>
    <p><strong>Important distinction:</strong> “I felt irritated” is not the same as “I acted irritated.” Rate the internal experience and the outward social signal separately.</p>
  </div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">4</div><div class="section-title">Choose how each target is rated</div></div><div class="card-body guide-copy">
