@@ -125,3 +125,13 @@ th:first-child, td:first-child { text-align:left; position:sticky; left:0; backg
   .report-empty { color:#555; font-style:italic; }
   .report-footer { margin-top:10px; padding-top:4px; border-top:1px solid #bbb; color:#666; font-size:7.5px; }
 }
+
+.skill-select-row { display:grid; grid-template-columns:minmax(0,1fr) 36px; gap:8px; align-items:center; margin:6px 0; }
+.skill-select-row .check-row { margin:0; }
+.skill-check { width:100%; }
+.skill-reference-row { display:grid; grid-template-columns:minmax(0,1fr) 36px; gap:10px; align-items:start; padding:13px 0; border-bottom:1px solid #eceae4; }
+.skill-reference-row:last-child { border-bottom:0; }
+.skill-ref { color:var(--accent); font-size:12px; font-weight:750; margin-bottom:10px; }
+.skill-steps { margin:6px 0 0 20px; padding:0; }
+.skill-steps li { margin:7px 0; line-height:1.4; }
+.prompt-category { display:inline-block; margin-bottom:8px; padding:4px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent); font-size:11px; font-weight:800; }

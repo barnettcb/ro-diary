@@ -1,14 +1,17 @@
-# RO Diary Beta 0.3.0
+# RO Diary Beta 0.4.0
 
 Private, local-first RO-DBT diary card beta.
 
-## Changes in 0.3.0
-- Info and Note/Event popups no longer move the Today screen back to the top.
-- Added Previous / Today / Next controls so entries from earlier days in the current therapy week can be reviewed and edited.
-- Editing a completed earlier day marks it incomplete until it is completed again.
-- New therapy weeks now prompt for Week Setup instead of silently carrying forward the prior week's setup.
-- Improved therapist PDF readability with larger type, more spacing, and a separate details page so longer information can wrap without being cut off.
+## Changes in 0.4.0
+- Added safe deletion of archived therapy weeks. The current week cannot be deleted.
+- Expanded Self-Enquiry to 120 original RO-DBT-informed prompts across topic categories.
+- Added topic filtering and recent-repeat avoidance for generated prompts.
+- Added optional "Question I Discovered" entries for the current therapy week.
+- Expanded saved/favorite/personal question handling.
+- Expanded the RO Skills Reference with purpose, when-to-use guidance, quick guides, and manual references.
+- Added skill information buttons directly on the Today screen and in Other RO Skill.
 
 ## Important
 - This update keeps the existing encrypted vault and diary data. Do not delete/reinstall the Home Screen app for this update.
-- Keep current encrypted backups while testing.
+- Create a current encrypted backup before updating or deleting an archived week.
+- Skills content is a concise reference based on RO-DBT source materials; it does not replace the official handouts, worksheets, skills class, or individual therapy.

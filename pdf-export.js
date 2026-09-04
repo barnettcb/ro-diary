@@ -121,8 +121,12 @@ function buildPdfBytes(report){
   p.section('Self-Enquiry');
   p.text(`Weekly focus: ${report.weeklySEFocus||'-'}`,{size:9.2,maxWidth:CONTENT_W,lineHeight:12,gap:5});
   if(report.savedQuestions?.length){
-    p.text('Saved questions this week:',{size:9.2,bold:true,lineHeight:12});
+    p.text('Saved prompts this week:',{size:9.2,bold:true,lineHeight:12});
     for(const q of report.savedQuestions)p.text(`- ${q}`,{x:M+10,size:9,maxWidth:CONTENT_W-10,lineHeight:12,gap:2});
+  }
+  if(report.discoveredQuestions?.length){
+    p.text('Questions discovered this week:',{size:9.2,bold:true,lineHeight:12});
+    for(const q of report.discoveredQuestions)p.text(`- ${q}`,{x:M+10,size:9,maxWidth:CONTENT_W-10,lineHeight:12,gap:2});
   }
 
   p.section('Week Context');

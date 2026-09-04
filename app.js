@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.3.0-beta';
+const APP_VERSION = '0.4.0-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 1;
@@ -37,30 +37,62 @@ const SCALE_ANCHORS = [
 ];
 
 const SKILLS = [
-  {id:'definitely', name:'DEFinitely', lesson:1, purpose:'Practice radical openness by noticing distress, using self-enquiry, and responding more flexibly.'},
-  {id:'big3', name:'Big 3 + 1', lesson:3, purpose:'Use body and facial signals that support social safety and openness.'},
-  {id:'lkm', name:'Loving Kindness Meditation', lesson:4, purpose:'Practice warmth and goodwill to support openness and connection.'},
-  {id:'varies', name:'Flexible Mind VARIEs', lesson:5, purpose:'Practice novel behavior and willingness to learn from new experience.'},
-  {id:'sage', name:'Flexible Mind SAGE', lesson:8, purpose:'Respond skillfully to shame, embarrassment, rejection, or exclusion.'},
-  {id:'deep', name:'Flexible Mind Is DEEP', lesson:10, purpose:'Use social signaling deliberately in service of values and connection.'},
-  {id:'fixed-fatalistic', name:'Fixed / Fatalistic Mind Skills', lesson:11, purpose:'Notice rigid or resigned states of mind and move toward flexibility.'},
-  {id:'awareness', name:'Awareness Continuum', lesson:12, purpose:'Describe present experience directly and with integrity.'},
-  {id:'self-enquiry', name:'Self-Enquiry', lesson:13, purpose:'Use healthy self-doubt to look for what you may be missing.'},
-  {id:'reveal', name:'Flexible Mind REVEALs', lesson:16, purpose:'Notice pushbacks and hidden control strategies in relationships.'},
-  {id:'rocks-on', name:'Flexible Mind ROCKs ON', lesson:17, purpose:'Support interpersonal kindness, effectiveness, and connectedness.'},
-  {id:'proves', name:'Flexible Mind PROVEs', lesson:18, purpose:'Practice assertiveness while remaining open to new information.'},
-  {id:'validates', name:'Flexible Mind Validates', lesson:19, purpose:'Signal inclusion and understanding through validation.'},
-  {id:'allows', name:'Flexible Mind ALLOWs', lesson:21, purpose:'Support intimacy and social connectedness.'},
-  {id:'adopts', name:'Flexible Mind ADOPTS', lesson:22, purpose:'Receive and evaluate corrective feedback with openness.'},
-  {id:'dares', name:'Flexible Mind DARES', lesson:27, purpose:'Respond more flexibly to unhelpful envy or resentment.'},
-  {id:'light', name:'Flexible Mind Is LIGHT', lesson:28, purpose:'Work with cynicism, bitterness, and resignation.'},
-  {id:'heart', name:'Flexible Mind Has HEART', lesson:29, purpose:'Practice forgiveness while retaining appropriate boundaries.'},
-  {id:'urge-surfing', name:'Urge Surfing', lesson:null, purpose:'Notice an urge without automatically acting on it; use the space to choose what to do next.'}
+  {id:'definitely', name:'DEFinitely', lesson:1, reference:'Lesson 1 • Handout 1.2–1.3 • Worksheet 1.B', purpose:'A three-part radical-openness practice for moments when you notice distress, tension, resistance, or closedness.', useWhen:'Useful when you feel criticized, invalidated, irritated, judgmental, shut down, defensive, uncertain, or strongly pulled to avoid or fix the experience.', steps:[
+    'D — Acknowledge the distress or unwanted private experience instead of immediately trying to get rid of it.',
+    'E — Turn toward the discomfort with self-enquiry. Look for a useful question near your personal unknown rather than rushing to a reassuring answer.',
+    'F — Respond flexibly and with humility based on what the situation and your values call for. Openness does not require automatic agreement or surrender.'
+  ]},
+  {id:'big3', name:'Big 3 + 1', lesson:3, reference:'Lesson 3 • Handout 3.1 • Worksheet 3.A', purpose:'Uses posture, breathing, facial expression, and eyebrow movement to help activate social safety and communicate openness.', useWhen:'Useful when your body feels guarded, tense, threat-focused, or socially closed.', steps:['Lean back rather than leaning forward into threat or control.','Take a slow, deep breath.','Use a small closed-mouth cooperative smile.','Add a brief eyebrow wag when appropriate to signal friendliness and openness.']},
+  {id:'lkm', name:'Loving Kindness Meditation', lesson:4, reference:'Lesson 4 • Handout 4.1 • Worksheet 4.A', purpose:'Cultivates a warmer social-safety state by intentionally practicing goodwill toward yourself or another person.', useWhen:'Useful when resentment, threat, distance, or a cold/guarded stance is making openness difficult.', steps:['Settle attention and bring a person to mind.','Practice sincere wishes for ease, contentment, joy, and safety.','Notice resistance without forcing a feeling; repeatedly return to the practice.']},
+  {id:'varies', name:'Flexible Mind VARIEs', lesson:5, reference:'Lesson 5 • Handout 5.1 • Worksheet 5.A', purpose:'Helps you try novel behavior instead of relying automatically on familiar routines, rehearsal, or avoidance.', useWhen:'Useful when excessive preparation, certainty-seeking, perfectionism, or habit is blocking new learning.', steps:['Visualize the new behavior and likely outcomes.','Check the accuracy of predictions and assumptions.','Relinquish unnecessary rehearsal or preparation.','Initiate the new behavior while supporting social safety.','Evaluate what actually happened and what you learned.']},
+  {id:'sage', name:'Flexible Mind SAGE', lesson:8, reference:'Lesson 8 • Handout 8.4–8.5 • Worksheet 8.A', purpose:'Helps evaluate and respond to shame, embarrassment, rejection, and exclusion without automatically hiding, appeasing, attacking, or dismissing the emotion.', useWhen:'Useful after a social event that leaves you ashamed, embarrassed, rejected, or strongly self-conscious.', steps:['Use self-enquiry to examine what the emotion may be telling you.','Assess whether shame is warranted, partly warranted, or unwarranted.','When warranted, take responsibility and repair without collapsing or over-justifying.','When unwarranted, go opposite to hiding or unnecessary appeasement and signal openness appropriately.']},
+  {id:'deep', name:'Flexible Mind Is DEEP', lesson:10, reference:'Lesson 10 • Handout 10.3 • Worksheet 10.A–10.B', purpose:'Uses valued goals to guide how openly and effectively you express emotion through social signals.', useWhen:'Useful when you know what you feel but are unsure how much to express, conceal, or communicate.', steps:['Determine the valued goal for the interaction.','Express emotion effectively rather than automatically inhibiting or exaggerating it.','Examine the interpersonal outcome and what your signals communicated.','Practice open expression repeatedly so it becomes more natural.']},
+  {id:'fixed-kind', name:'Being Kind to Fixed Mind', lesson:11, reference:'Lesson 11 • Handout 11.2 • Worksheet 11.A', purpose:'Recognizes rigid, certain, or rule-bound states without attacking yourself for having them.', useWhen:'Useful when you feel absolutely certain, rigid, judgmental, or compelled to make the situation conform to a rule.', steps:['Notice the thoughts, emotions, sensations, and urges associated with Fixed Mind.','Name the state without trying to immediately fix it.','Respond to yourself with kindness while allowing space for new information.']},
+  {id:'fatalistic-learn', name:'Learning from Fatalistic Mind', lesson:11, reference:'Lesson 11 • Handout 11.3', purpose:'Treats resignation, defeat, and giving-up responses as information to listen to rather than commands to obey.', useWhen:'Useful when you feel hopeless, numb, shut down, resigned, or convinced that effort is pointless.', steps:['Observe what Fatalistic Mind is saying and what you feel or want to do.','Acknowledge the state without fusing with it.','Listen for what may need attention or learning before choosing the next action.']},
+  {id:'fatalistic-opposite', name:'Going Opposite to Fatalistic Mind', lesson:11, reference:'Lesson 11 • Worksheet 11.B', purpose:'Builds flexible action when resignation or giving up is driving behavior.', useWhen:'Useful when Fatalistic Mind is pulling you toward withdrawal, quitting, or passive surrender.', steps:['Describe the situation and the fatalistic response.','Acknowledge that Fatalistic Mind is present.','Choose a constructive action that goes opposite to the urge to give up when doing so fits the facts and your goals.']},
+  {id:'awareness', name:'Awareness Continuum', lesson:12, reference:'Lesson 12 • Handout 12.1', purpose:'Practices describing immediate experience directly, without automatically explaining, justifying, or analyzing it.', useWhen:'Useful when analysis is outrunning awareness or you are having trouble identifying what is happening inside and around you.', steps:['Begin with “I am aware of…” and name what is actually present.','Move among sensations, thoughts, emotions, urges, and environmental details.','Keep descriptions close to experience rather than turning them into explanations or arguments.']},
+  {id:'observe', name:'Observe Openly', lesson:12, reference:'Lesson 12 • Worksheet 12.A / 12.C', purpose:'Practices noticing inner and outer experience with openness to what is actually there.', useWhen:'Useful when attention has narrowed around a conclusion, threat, judgment, or plan.', steps:['Notice present-moment information inside and outside you.','Allow information to register before deciding what it means.','Return attention when the mind moves into automatic interpretation or control.']},
+  {id:'describe', name:'Describe with Integrity', lesson:12, reference:'Lesson 12 • Handout 12.1 / Worksheet 12.C', purpose:'Puts observed experience into accurate words without using description as disguised justification.', useWhen:'Useful when you want to communicate or understand an experience without building a case for why you are right.', steps:['Describe observable facts and present internal experience.','Separate what you notice from the story you are telling about it.','Avoid adding explanations merely to defend, prove, or control.']},
+  {id:'participate', name:'Participate Without Planning', lesson:12, reference:'Lesson 12 • Worksheet 12.B–12.C', purpose:'Practices entering ordinary experience more fully without excessive rehearsal, scripting, or control.', useWhen:'Useful when planning and preparation are keeping you from spontaneous participation.', steps:['Notice the urge to plan or rehearse.','Allow some uncertainty about what happens next.','Participate in the activity while responding to what actually unfolds.']},
+  {id:'self-enquiry', name:'Self-Enquiry', lesson:13, reference:'Lesson 13 • Handout 13.1–13.3 • Worksheet 13.A', purpose:'Cultivates healthy self-doubt by looking for what you may be missing, avoiding, or unwilling to acknowledge.', useWhen:'Useful whenever certainty, defensiveness, tension, shame, resistance, or avoidance suggests there may be something to learn.', steps:['Notice the cue that you may be closing or resisting.','Ask a question that moves toward your edge or personal unknown.','Be suspicious of quick, self-protective answers; let learning emerge over time.','When appropriate, share what you discover rather than hiding fallibility.']},
+  {id:'harsh-judgments', name:'Awareness of Harsh Judgments', lesson:14, reference:'Lesson 14 • Handout 14.2 • Worksheet 14.A', purpose:'Notices harsh judgments as mental events and uses them as possible openings for self-enquiry.', useWhen:'Useful when the mind is labeling yourself, another person, or a situation in rigid or contemptuous terms.', steps:['Notice the judgment without pretending it is not there.','Separate the judgment from direct observation.','Use self-enquiry to examine what the judgment may be protecting or what information you may be missing.']},
+  {id:'one-mindful', name:'One-Mindful Awareness', lesson:14, reference:'Lesson 14 • Handout 14.1 • Worksheet 14.A', purpose:'Purposefully returns attention to the present activity rather than splitting attention across rehearsal, rumination, or distraction.', useWhen:'Useful when your attention is pulled into past arguments, future planning, or several competing tasks.', steps:['Choose what you are doing now.','Bring attention back to that activity when it wanders.','Participate without demanding perfect concentration.']},
+  {id:'effective-humility', name:'Effectively and with Humility', lesson:14, reference:'Lesson 14 • Handout 14.1 • Worksheet 14.A', purpose:'Balances effective action with openness to being fallible and influenced by new information.', useWhen:'Useful when being correct, proving a point, or protecting status may be competing with what actually works.', steps:['Clarify what would be effective in the situation.','Remember that your perspective can be incomplete.','Choose behavior that serves the goal while signaling appropriate humility.']},
+  {id:'pushbacks', name:'Identify Pushbacks & Don’t-Hurt-Me Responses', lesson:16, reference:'Lesson 16 • Handout 16.1–16.2', purpose:'Helps recognize indirect signals used to resist, control, protect, or discourage another person from continuing.', useWhen:'Useful when words sound cooperative but tone, withdrawal, sarcasm, silence, or other signals may communicate resistance.', steps:['Notice the outward signal and the private urge behind it.','Consider what you may be trying to prevent, control, or communicate indirectly.','Use self-enquiry before deciding how to respond.']},
+  {id:'reveal', name:'Flexible Mind REVEALs', lesson:16, reference:'Lesson 16 • Worksheet 16.A', purpose:'Supports interpersonal integrity by examining hidden wishes for control and making communication more direct and open.', useWhen:'Useful when you notice pushback, indirect communication, concealed resentment, or a wish to control another person’s response.', steps:['Recognize the desire for control.','Examine the signals you are sending.','Reconnect with your values for the interaction.','Reveal relevant private experience more directly when appropriate.','Stay open to feedback and learning from the response.']},
+  {id:'rocks-on', name:'Flexible Mind ROCKs ON', lesson:17, reference:'Lesson 17 • Handout 17.1 • Worksheet 17.C', purpose:'Organizes interpersonal choices around kindness, effectiveness, openness, and the needs of both people.', useWhen:'Useful when you are deciding how to respond in a relationship while also feeling an urge to control the outcome.', steps:['Resist automatic efforts to control.','Assess how open you want and need to be.','Clarify the priority goal.','Start from kindness toward self and other.','Consider the other person’s needs as well as your own.']},
+  {id:'kindness', name:'Kindness First and Foremost', lesson:17, reference:'Lesson 17 • Worksheet 17.B', purpose:'Uses kindness as the default interpersonal stance when you are unsure how to respond.', useWhen:'Useful when irritation, mistrust, perfectionism, or resentment makes it easy to assume the worst or demand conformity.', steps:['Consider how you would want to be treated in the same situation.','Allow for the possibility that your perception is incomplete.','Choose a response that protects dignity and connection without requiring false agreement.']},
+  {id:'proves', name:'Flexible Mind PROVEs', lesson:18, reference:'Lesson 18 • Worksheet 18.A', purpose:'Supports assertiveness that is clear about your needs while remaining open to the other person and to new information.', useWhen:'Useful when you need to ask, say no, set a limit, or address a problem without becoming rigid or overly appeasing.', steps:['Provide a clear description of the situation.','Reveal relevant emotions or private experience.','Consider the other person’s needs.','Use valued goals to guide what you ask for or say.','Return to self-enquiry if rigidity or defensiveness takes over.']},
+  {id:'validates', name:'Flexible Mind Validates', lesson:19, reference:'Lesson 19 • Handout 19.1 • Worksheet 19.A', purpose:'Uses validation to communicate social inclusion and show that another person’s experience has been noticed and taken seriously.', useWhen:'Useful when understanding and connection matter, especially before moving into disagreement or problem solving.', steps:['Pay attention to what is actually being communicated.','Reflect accurately rather than mechanically agreeing.','Consider context and what makes the response understandable.','Signal trust, respect, and reciprocity at a level that fits the relationship.']},
+  {id:'allows', name:'Flexible Mind ALLOWs', lesson:21, reference:'Lesson 21 • Handout 21.1 • Worksheet 21.A', purpose:'Helps approach intimacy and closeness with openness while respecting the actual relationship and your limits.', useWhen:'Useful when fear, mistrust, or overprotection is restricting appropriate closeness.', steps:['Assess your commitment to the relationship.','Look for evidence rather than relying only on fear.','Loosen the grip on protective predictions.','Share relevant personal information at an appropriate level.','Welcome feedback about the interaction.']},
+  {id:'match1', name:'MATCH + 1', lesson:21, reference:'Lesson 21 • Handout 21.2–21.3', purpose:'Builds intimacy gradually by matching the other person’s level of disclosure and moving only slightly deeper when appropriate.', useWhen:'Useful when you want to build or improve a relationship without either over-disclosing or staying excessively distant.', steps:['Estimate the current intimacy level of the interaction.','Match the other person’s level of personal disclosure.','When the relationship supports it, move one small level deeper rather than making a large leap.']},
+  {id:'adopts', name:'Flexible Mind ADOPTS', lesson:22, reference:'Lesson 22 • Handout 22.1–22.2 • Worksheet 22.A', purpose:'Provides a structured way to receive, examine, and respond to corrective feedback without automatically accepting or rejecting it.', useWhen:'Useful when feedback triggers defensiveness, shame, anger, dismissal, or an urge to prove the other person wrong.', steps:['Acknowledge that feedback was given.','Describe your internal response honestly.','Open to the possibility that some information may be useful.','Pinpoint a behavior to try when change appears warranted.','Try the behavior and evaluate what happens; soothe yourself as needed.']},
+  {id:'dares', name:'Flexible Mind DARES', lesson:27, reference:'Lesson 27 • Worksheet 27.A', purpose:'Works with envy and resentment when they are pulling behavior away from valued goals or relationships.', useWhen:'Useful when another person’s success, status, or possessions trigger unhelpful comparison, anger, shame, or resentment.', steps:['Determine whether the envy is helping or harming you.','Admit the emotion rather than disguising it.','Recognize accompanying thoughts and urges.','When appropriate, go opposite to envy-driven anger or shame.']},
+  {id:'light', name:'Flexible Mind Is LIGHT', lesson:28, reference:'Lesson 28 • Worksheet 28.A', purpose:'Addresses bitterness, cynicism, and resignation by moving toward engagement, contribution, and gratitude.', useWhen:'Useful when repeated hurt or disappointment has hardened into isolation, contempt, or giving up on people.', steps:['Label bitterness or cynicism when it is present.','Notice the intentions and urges that accompany it.','Go opposite to isolating when safe and appropriate.','Practice helping or contributing to others.','Notice what remains worthy of gratitude without denying genuine harm.']},
+  {id:'heart', name:'Flexible Mind Has HEART', lesson:29, reference:'Lesson 29 • Handout 29.1–29.3 • Worksheet 29.A', purpose:'Supports forgiveness as a chosen process that can release ongoing control by past hurt without erasing boundaries or denying harm.', useWhen:'Useful when an old injury continues to dominate attention, identity, or present relationships.', steps:['Identify the hurt clearly.','Use self-enquiry to locate the edge around the injury.','Remember that forgiveness is a choice, not a requirement to trust or reconcile.','Reclaim parts of life that have been organized around the injury.','Make room for gratitude or meaning where it genuinely exists.']},
+  {id:'urge-surfing', name:'Urge Surfing', lesson:5, reference:'Described in Lesson 5 • Handout 5.1', purpose:'Practices noticing an urge as a temporary experience without treating it as an instruction that requires immediate action.', useWhen:'Useful with urges to avoid, escape, rehearse, explain, correct, appease, plan compulsively, or otherwise act automatically.', steps:['Notice the urge and the sensations, thoughts, or images that come with it.','Allow the urge to rise and fall without trying to force it away.','Keep returning attention to present experience, such as breathing.','Choose whether to act after creating space rather than responding automatically.']},
+  {id:'fixed-fatalistic', name:'Fixed / Fatalistic Mind Skills', lesson:11, reference:'Legacy combined entry • Lesson 11', purpose:'Legacy combined label retained so older diary entries continue to display correctly.', useWhen:'Use the more specific Fixed Mind or Fatalistic Mind skills above for new entries.', steps:['This combined item is retained for historical compatibility.']}
 ];
 
 const DEFAULT_FOCUS_SKILLS = ['definitely','big3','lkm','sage','urge-surfing'];
 const DEFAULT_SE_FOCUS = 'When I notice the urge to avoid doing my diary card, what do I notice as I sit with and surf the urge instead of immediately acting on it?';
 const DEFAULT_HOMEWORK = 'Lesson 9 — Worksheet 9.A: Practicing Enhancing Facial Expressions';
+
+const SE_CATEGORIES = [
+  ['all','All Topics'],
+  ['openness','Openness & Learning'],
+  ['uncertainty','Uncertainty & Not Knowing'],
+  ['defensiveness','Defensiveness & Self-Protection'],
+  ['avoidance','Avoidance & Willingness'],
+  ['control','Control, Rules & Flexibility'],
+  ['vulnerability','Vulnerability & Exposure'],
+  ['social','Social Signaling'],
+  ['shame','Shame & Self-Consciousness'],
+  ['connection','Connection & Relationships'],
+  ['feedback','Feedback & Perspective'],
+  ['appeasing','Appeasing & Conflict'],
+  ['body','Body & Activation']
+].map(([id,label])=>({id,label}));
 
 const SE_PROMPTS = [
   ['openness','What might I be missing because I am certain I already understand this situation?'],
@@ -122,7 +154,67 @@ const SE_PROMPTS = [
   ['body','Where do I notice the first small sign that I am becoming activated?'],
   ['body','What changes in my voice, face, breathing, or posture when I feel threatened?'],
   ['body','If I stop analyzing for a moment, what physical sensation is most noticeable?'],
-  ['body','What urge appears alongside this sensation, and do I have to act on it?']
+  ['body','What urge appears alongside this sensation, and do I have to act on it?'],
+  ["openness","Where am I treating familiarity with this situation as proof that there is nothing new to learn?"],
+  ["openness","What would curiosity ask here that certainty does not ask?"],
+  ["openness","If I temporarily set aside my preferred explanation, what becomes easier to notice?"],
+  ["openness","What reaction in me suggests that this topic may be close to something I do not want to examine?"],
+  ["openness","What could openness look like here without requiring me to agree with anyone?"],
+  ["uncertainty","Which part of this situation am I trying to make predictable before I am willing to act?"],
+  ["uncertainty","What would I do differently if I accepted that I may not get certainty before making a reasonable choice?"],
+  ["uncertainty","What am I rehearsing because I hope preparation will remove discomfort?"],
+  ["uncertainty","If two different explanations could both be partly true, what would they be?"],
+  ["uncertainty","What am I afraid uncertainty will expose about me?"],
+  ["defensiveness","What happens in my body in the few seconds before I begin defending my position?"],
+  ["defensiveness","Am I trying to clarify something useful, or trying to make an uncomfortable judgment disappear?"],
+  ["defensiveness","What would be left for me to feel if I stopped explaining for a moment?"],
+  ["defensiveness","What part of my self-image feels most threatened in this interaction?"],
+  ["defensiveness","If I could be misunderstood without immediately correcting it, what might I notice next?"],
+  ["avoidance","What am I telling myself I need before I can face this, and is that actually necessary?"],
+  ["avoidance","What is the cost of getting immediate relief from this discomfort?"],
+  ["avoidance","If I approach instead of avoid, what is the smallest useful action I could take?"],
+  ["avoidance","What part of this experience feels merely unpleasant, and what part may actually be unsafe?"],
+  ["avoidance","What might I learn if I remain present without requiring the discomfort to improve first?"],
+  ["control","What outcome am I trying to guarantee, and what part of it belongs to someone else?"],
+  ["control","Which rule feels nonnegotiable here, and where did that rule come from?"],
+  ["control","What would \u201cgood enough\u201d look like if perfect control were unavailable?"],
+  ["control","Is my preferred method serving the goal, or has following the method become the goal?"],
+  ["control","What could someone do differently from me and still do adequately or well?"],
+  ["vulnerability","What would I say if I did not need to sound certain, strong, or fully composed?"],
+  ["vulnerability","What need is present that I would rather translate into logic or criticism?"],
+  ["vulnerability","What do I want another person to know that I am reluctant to reveal directly?"],
+  ["vulnerability","What would feel most embarrassing to admit about why this matters to me?"],
+  ["vulnerability","If I allowed myself to be affected by this without judging that reaction, what would I notice?"],
+  ["social","What did I communicate with timing, silence, facial expression, or posture before I said anything?"],
+  ["social","Did my signal match the level of warmth, seriousness, or vulnerability I actually intended?"],
+  ["social","What might another person reasonably read into my expression even if that was not my intention?"],
+  ["social","Where did I signal distance while hoping the other person would move closer?"],
+  ["social","What small change in my nonverbal behavior could make my words easier to receive?"],
+  ["shame","Am I trying to repair an actual mistake, or trying to erase the feeling of being imperfect?"],
+  ["shame","What evidence would help me decide whether this shame is warranted, partly warranted, or not warranted?"],
+  ["shame","If I made room for being fallible, what action would still matter?"],
+  ["shame","What do I want to hide because I fear it will lower another person\u2019s opinion of me?"],
+  ["shame","How might I take responsibility without turning one behavior into a judgment about my whole identity?"],
+  ["connection","Where am I asking for closeness while also signaling that I do not want to be influenced?"],
+  ["connection","What degree of openness fits this relationship rather than the degree that fear or urgency is pushing me toward?"],
+  ["connection","What would genuine interest in the other person look like for the next few minutes?"],
+  ["connection","What am I protecting that may also be keeping me distant?"],
+  ["connection","If connection mattered slightly more than winning this exchange, what might change in my behavior?"],
+  ["feedback","Can I separate the usefulness of the feedback from whether I like the way it was delivered?"],
+  ["feedback","What specific behavior is being described, apart from any global judgment I hear in it?"],
+  ["feedback","What part of the feedback can I test rather than immediately accept or reject?"],
+  ["feedback","If I asked one question only to learn rather than rebut, what would I ask?"],
+  ["feedback","What might the other person be seeing repeatedly that is difficult for me to see from inside myself?"],
+  ["appeasing","What am I communicating by agreeing when my actual view is different?"],
+  ["appeasing","What would respectful disagreement sound like if I did not need to eliminate tension?"],
+  ["appeasing","Am I choosing peace, or avoiding the experience of another person being displeased with me?"],
+  ["appeasing","What consequence am I predicting if I stay honest and engaged instead of giving in?"],
+  ["appeasing","How could I remain kind without signaling agreement I do not actually feel?"],
+  ["body","What is the earliest physical cue I can identify before my behavior becomes automatic?"],
+  ["body","What sensation changes when I slow my breathing and stop preparing my response?"],
+  ["body","If this tension could provide information rather than just a problem to remove, what might it be pointing toward?"],
+  ["body","What does my body do when I move from curiosity into certainty or defense?"],
+  ["body","Can I notice this activation for a few moments without deciding what it means yet?"]
 ].map((p, i) => ({id:`p${String(i+1).padStart(3,'0')}`, category:p[0], text:p[1]}));
 
 let db = null;
@@ -141,6 +233,7 @@ let appState = {
   selectedDate: null,
   modal: null,
   currentPromptId: null,
+  seCategory: 'all',
   hiddenAt: null,
   saveChain: Promise.resolve(),
   saveError: null,
@@ -279,7 +372,7 @@ function buildNewWeek(startDate, previous=null) {
     weeklySEFocus:previous?.weeklySEFocus || DEFAULT_SE_FOCUS,
     homework:previous?.homework || DEFAULT_HOMEWORK,
     valuedGoal:previous?.valuedGoal || '', majorOCTheme:'', majorOCThemeEnabled:false,
-    savedSEPrompts:[], days, archived:false,
+    savedSEPrompts:[], newSEQuestions:[], days, archived:false,
     setupStatus:previous?'pending':'confirmed', setupConfirmedAt:previous?null:now,
     createdAt:now,modifiedAt:now
   };
@@ -290,7 +383,7 @@ async function initializeFreshData() {
   const profile={
     version:2,therapyWeekStart:WEEK_START_DAY,currentWeekId:week.id,weekIds:[week.id],
     pdfName:'Brooke',lastBackupAt:null,createdAt:new Date().toISOString(),modifiedAt:new Date().toISOString(),
-    favoritePromptIds:[],notUsefulPromptIds:[],myQuestions:[]
+    favoritePromptIds:[],notUsefulPromptIds:[],recentPromptIds:[],myQuestions:[]
   };
   await saveRecord('profile',profile); await saveRecord(`week:${week.id}`,week);
   appState.profile=profile; appState.currentWeek=week; appState.selectedDate=todayStr();
@@ -299,6 +392,10 @@ async function initializeFreshData() {
 async function loadAppData() {
   const profile=await loadRecord('profile'); if(!profile) throw new Error('Profile could not be loaded.');
   appState.profile=profile;
+  profile.favoritePromptIds=Array.isArray(profile.favoritePromptIds)?profile.favoritePromptIds:[];
+  profile.notUsefulPromptIds=Array.isArray(profile.notUsefulPromptIds)?profile.notUsefulPromptIds:[];
+  profile.recentPromptIds=Array.isArray(profile.recentPromptIds)?profile.recentPromptIds:[];
+  profile.myQuestions=Array.isArray(profile.myQuestions)?profile.myQuestions:[];
   let week=await loadRecord(`week:${profile.currentWeekId}`);
   const today=new Date(); const todayKey=todayStr(); const expectedStart=getWeekStart(today,profile.therapyWeekStart ?? WEEK_START_DAY);
   let saveProfileNeeded=false; let saveWeekNeeded=false;
@@ -309,6 +406,8 @@ async function loadAppData() {
     profile.currentWeekId=week.id; profile.weekIds.push(week.id); profile.modifiedAt=new Date().toISOString();
     await saveRecord(`week:${week.id}`,week); saveProfileNeeded=true;
   }
+  week.savedSEPrompts=Array.isArray(week.savedSEPrompts)?week.savedSEPrompts:[];
+  week.newSEQuestions=Array.isArray(week.newSEQuestions)?week.newSEQuestions:[];
   // One-time upgrade: prompt to review the current week's copied setup without changing any diary data.
   if((profile.version||1)<2){
     profile.version=2; saveProfileNeeded=true;
@@ -379,8 +478,10 @@ function setTargetValue(day,id,val){
   });
   updateCompletionUi(day);
 }
-function skillName(id){ return SKILLS.find(s=>s.id===id)?.name || id; }
+function skillById(id){ return SKILLS.find(s=>s.id===id); }
+function skillName(id){ return skillById(id)?.name || id; }
 function promptById(id){ return SE_PROMPTS.find(p=>p.id===id); }
+function categoryLabel(id){ return SE_CATEGORIES.find(c=>c.id===id)?.label || id; }
 
 function render(options={}) {
   const root=document.getElementById('app'); if(!root) return;
@@ -465,7 +566,7 @@ function renderToday(day) {
     ${renderTargetSection('What I noticed internally','Private Behaviors, Emotions & Urges',w.privateTargets,day)}
     ${renderTargetSection('What I signaled or did','Social Signals & Overt Behaviors',w.socialTargets,day)}
     <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body"><div class="checkbox-list">
-      ${focusSkills.map(s=>`<label class="check-row"><input type="checkbox" data-skill="${s.id}" ${day.skills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}
+      ${focusSkills.map(s=>`<div class="skill-select-row"><label class="check-row skill-check"><input type="checkbox" data-skill="${s.id}" ${day.skills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label><button class="info-btn" aria-label="About ${escapeHtml(s.name)}" data-skill-info="${s.id}">i</button></div>`).join('')}
     </div><button class="btn soft wide" style="margin-top:10px" data-action="other-skill">+ Other RO Skill</button></div></section>
     <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry focus</div></div><div class="card-body"><div>${escapeHtml(w.weeklySEFocus||'No weekly focus question entered.')}</div><div class="btn-row" style="margin-top:12px"><button class="btn soft" data-action="go-se">Give Me an SE Prompt</button><button class="btn" data-action="saved-questions">Saved Questions</button></div></div></section>
     <section class="card"><div class="card-header"><div class="section-kicker">Notes / Events</div></div><div class="card-body">
@@ -475,19 +576,27 @@ function renderToday(day) {
 }
 function renderEvent(e){return `<div class="event-card"><div class="event-context">${escapeHtml(e.context||'Event')}</div><div class="event-note">${escapeHtml(e.note||'')}</div>${e.discuss?'<div class="flag">★ Discuss in Therapy</div>':''}<div class="event-actions"><button class="btn" data-action="edit-event" data-event-id="${e.id}">Edit</button><button class="btn danger" data-action="delete-event" data-event-id="${e.id}">Delete</button></div></div>`;}
 
-function choosePrompt() {
-  const blocked=new Set(appState.profile.notUsefulPromptIds||[]); let pool=SE_PROMPTS.filter(p=>!blocked.has(p.id));
-  if(appState.currentPromptId && pool.length>1) pool=pool.filter(p=>p.id!==appState.currentPromptId);
-  const p=pool[Math.floor(Math.random()*pool.length)] || SE_PROMPTS[0]; appState.currentPromptId=p.id; return p;
+function choosePrompt(category=appState.seCategory) {
+  const blocked=new Set(appState.profile.notUsefulPromptIds||[]);
+  const recent=new Set(appState.profile.recentPromptIds||[]);
+  let pool=SE_PROMPTS.filter(p=>!blocked.has(p.id) && (category==='all' || p.category===category));
+  if(!pool.length) pool=SE_PROMPTS.filter(p=>!blocked.has(p.id));
+  let fresh=pool.filter(p=>!recent.has(p.id) && p.id!==appState.currentPromptId);
+  if(!fresh.length) fresh=pool.filter(p=>p.id!==appState.currentPromptId);
+  const p=fresh[Math.floor(Math.random()*fresh.length)] || pool[0] || SE_PROMPTS[0];
+  appState.currentPromptId=p.id;
+  const next=[...(appState.profile.recentPromptIds||[]).filter(id=>id!==p.id),p.id].slice(-12);
+  appState.profile.recentPromptIds=next; queueSaveProfile();
+  return p;
 }
 function renderSE(){ const p=promptById(appState.currentPromptId)||choosePrompt(); const w=appState.currentWeek; const fav=appState.profile.favoritePromptIds.includes(p.id); const saved=w.savedSEPrompts.includes(p.id);
   return `<h1 class="page-title">Self-Enquiry</h1><section class="card"><div class="card-header"><div class="section-kicker">Weekly focus</div></div><div class="card-body">${escapeHtml(w.weeklySEFocus||'No weekly focus question.')}</div></section>
-  <section class="card"><div class="card-header"><div class="section-kicker">Random self-enquiry</div></div><div class="card-body"><div class="prompt-box">${escapeHtml(p.text)}</div><div class="btn-row" style="margin-top:12px">
+  <section class="card"><div class="card-header"><div class="section-kicker">Prompt generator</div><div class="section-title">One question at a time</div></div><div class="card-body"><div class="field"><label>Topic</label><select id="se-category">${SE_CATEGORIES.map(c=>`<option value="${c.id}" ${appState.seCategory===c.id?'selected':''}>${escapeHtml(c.label)}</option>`).join('')}</select></div><div class="prompt-category">${escapeHtml(categoryLabel(p.category))}</div><div class="prompt-box">${escapeHtml(p.text)}</div><div class="subtle" style="margin-top:8px">The aim is to find a useful question near something you do not fully know yet—not to force a quick answer.</div><div class="btn-row" style="margin-top:12px">
     <button class="btn primary" data-action="another-prompt">Another Prompt</button>
     <button class="btn ${saved?'soft':''}" data-action="save-prompt">${saved?'Saved This Week':'Save for This Week'}</button>
     <button class="btn ${fav?'soft':''}" data-action="favorite-prompt">${fav?'★ Favorite':'☆ Favorite'}</button>
     <button class="btn" data-action="reject-prompt">Not Useful</button></div></div></section>
-  <section class="card"><div class="card-body"><div class="list-row"><strong>Saved This Week</strong><span>${w.savedSEPrompts.length}</span></div><div class="list-row"><strong>Favorites</strong><span>${appState.profile.favoritePromptIds.length}</span></div><div class="list-row"><strong>My Questions</strong><span>${appState.profile.myQuestions.length}</span></div><div class="btn-row" style="margin-top:10px"><button class="btn soft" data-action="saved-questions">View Questions</button><button class="btn" data-action="add-my-question">+ My Question</button></div></div></section>`;
+  <section class="card"><div class="card-header"><div class="section-kicker">My questions</div></div><div class="card-body"><div class="list-row"><strong>Saved This Week</strong><span>${w.savedSEPrompts.length}</span></div><div class="list-row"><strong>Questions I Discovered This Week</strong><span>${w.newSEQuestions.length}</span></div><div class="list-row"><strong>Favorites</strong><span>${appState.profile.favoritePromptIds.length}</span></div><div class="list-row"><strong>My Question Library</strong><span>${appState.profile.myQuestions.length}</span></div><div class="btn-row" style="margin-top:10px"><button class="btn soft" data-action="saved-questions">View Questions</button><button class="btn" data-action="add-week-question">+ Question I Discovered</button><button class="btn" data-action="add-my-question">+ My Question</button></div></div></section>`;
 }
 
 function weekDates(w){ return Object.keys(w.days).sort(); }
@@ -500,7 +609,7 @@ function renderReview(){const w=appState.currentWeek; const dates=weekDates(w); 
  <section class="card"><div class="card-header"><div class="section-kicker">Social signals & overt behaviors</div></div><div class="card-body">${renderRatingsTable(w.socialTargets,w)}</div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Discuss in Therapy</div></div><div class="card-body">${flagged.length?flagged.map(e=>`<div class="event-card"><div class="event-context">${fmtDay(e.date)} — ${escapeHtml(e.context||'Event')}</div><div class="event-note">${escapeHtml(e.note||'')}</div></div>`).join(''):'<div class="subtle">No events flagged.</div>'}</div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body">${Object.keys(skillMap).length?Object.entries(skillMap).map(([s,ds])=>`<div class="list-row"><strong>${escapeHtml(skillName(s))}</strong><span class="small">${ds.join(', ')}</span></div>`).join(''):'<div class="subtle">No skills recorded.</div>'}</div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry</div></div><div class="card-body"><div><strong>Weekly focus:</strong><br>${escapeHtml(w.weeklySEFocus||'—')}</div><div style="margin-top:10px"><strong>Saved questions:</strong> ${w.savedSEPrompts.length}</div></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry</div></div><div class="card-body"><div><strong>Weekly focus:</strong><br>${escapeHtml(w.weeklySEFocus||'—')}</div><div style="margin-top:10px"><strong>Saved prompts:</strong> ${w.savedSEPrompts.length}</div><div style="margin-top:6px"><strong>Questions discovered:</strong> ${(w.newSEQuestions||[]).length}</div></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Week context</div></div><div class="card-body"><div><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div style="margin-top:8px"><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div></div></section>
  <section class="card"><div class="card-body"><button class="btn primary wide" data-action="print-report">Export Therapist PDF</button><button class="btn wide" style="margin-top:8px" data-action="backup">Create Encrypted Backup</button></div></section>`;}
 
@@ -512,33 +621,78 @@ function renderWeekSetup(){const w=appState.currentWeek; return `<button class="
  ${w.setupStatus==='pending'?'<div class="notice">This new week copied the prior week&apos;s setup. Review anything that changed in therapy, then finish setup.</div>':''}
  <section class="card"><div class="card-header"><div class="section-kicker">Private targets</div></div><div class="card-body">${renderTargetEditors(w.privateTargets,'private')}<button class="btn soft wide" data-action="add-target" data-kind="private">+ Add Private Target</button></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Social signals</div></div><div class="card-body">${renderTargetEditors(w.socialTargets,'social')}<button class="btn soft wide" data-action="add-target" data-kind="social">+ Add Social Target</button></div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">Weekly focus skills</div></div><div class="card-body"><div class="checkbox-list">${SKILLS.map(s=>`<label class="check-row"><input type="checkbox" data-focus-skill="${s.id}" ${w.focusSkills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><div class="subtle" style="margin-top:8px">Choose up to five focus skills. Other skills remain available on the daily card.</div></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">Weekly focus skills</div></div><div class="card-body"><div class="checkbox-list">${SKILLS.filter(s=>s.id!=='fixed-fatalistic').map(s=>`<label class="check-row"><input type="checkbox" data-focus-skill="${s.id}" ${w.focusSkills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><div class="subtle" style="margin-top:8px">Choose up to five focus skills. Other skills remain available on the daily card.</div></div></section>
  <section class="card"><div class="card-body"><div class="field"><label>Weekly self-enquiry focus</label><textarea data-week-field="weeklySEFocus">${escapeHtml(w.weeklySEFocus)}</textarea></div><div class="field"><label>Skills-class homework</label><input data-week-field="homework" value="${escapeHtml(w.homework)}"></div><div class="field"><label>Valued goal (optional)</label><input data-week-field="valuedGoal" value="${escapeHtml(w.valuedGoal)}"></div></div></section>
  ${w.setupStatus==='pending'?'<section class="card"><div class="card-body"><button class="btn primary wide" data-action="finish-week-setup">Finish Week Setup</button></div></section>':''}`;}
 function renderTargetEditors(targets,kind){return targets.map(t=>`<div class="inline-edit"><div class="inline-edit-row"><input data-target-label="${t.id}" data-kind="${kind}" value="${escapeHtml(t.label)}"><select data-target-type="${t.id}" data-kind="${kind}"><option value="scale" ${t.type==='scale'?'selected':''}>0–5</option><option value="yn" ${t.type==='yn'?'selected':''}>Y/N</option></select><button class="btn danger" data-delete-target="${t.id}" data-kind="${kind}">×</button></div><textarea data-target-def="${t.id}" data-kind="${kind}" class="small">${escapeHtml(t.definition||'')}</textarea></div>`).join('');}
 
 function renderArchive(){const ids=[...appState.profile.weekIds].reverse(); return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Archive</h1><section class="card"><div class="card-body" id="archive-list">${ids.map(id=>`<div class="list-row" data-week-id="${id}"><span>Week ${escapeHtml(id.slice(0,8))}</span><button class="btn" data-action="open-archive" data-week-id="${id}">Open</button></div>`).join('')}</div></section>`;}
 
-function renderSkillsReference(){return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">RO Skills Reference</h1><section class="card"><div class="card-body">${SKILLS.map(s=>`<div class="list-row"><div><strong>${escapeHtml(s.name)}</strong><div class="small subtle">${s.lesson?`Lesson ${s.lesson}`:'Current practice'} · ${escapeHtml(s.purpose)}</div></div></div>`).join('')}</div></section>`;}
+function renderSkillsReference(){return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">RO Skills Reference</h1><div class="subtle">Quick reference only. Use your RO-DBT manual and class materials for the full skill.</div><section class="card"><div class="card-body">${SKILLS.filter(s=>s.id!=='fixed-fatalistic').map(s=>`<div class="skill-reference-row"><div><strong>${escapeHtml(s.name)}</strong><div class="small subtle">${escapeHtml(s.reference||'')}</div><div class="small" style="margin-top:4px">${escapeHtml(s.purpose)}</div></div><button class="info-btn" aria-label="About ${escapeHtml(s.name)}" data-skill-info="${s.id}">i</button></div>`).join('')}</div></section>`;}
 
 function renderSettings(){return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Settings</h1><section class="card"><div class="card-body"><div class="field"><label>Therapy week starts</label><select id="week-start">${[[0,'Sunday'],[1,'Monday'],[2,'Tuesday'],[3,'Wednesday'],[4,'Thursday'],[5,'Friday'],[6,'Saturday']].map(([v,n])=>`<option value="${v}" ${appState.profile.therapyWeekStart===v?'selected':''}>${n}</option>`).join('')}</select><div class="subtle small">Changing this affects future weeks only.</div></div><div class="field"><label>PDF name</label><input id="pdf-name" value="${escapeHtml(appState.profile.pdfName||'')}"></div><button class="btn" data-action="change-pin">Change 4-Digit Passcode</button><button class="btn wide" style="margin-top:8px" data-action="lock-now">Lock Now</button></div></section>`;}
 
-function renderModal(){ const m=appState.modal; if(!m) return '';
-  if(m.type==='week-start'){const w=appState.currentWeek;return `<div class="modal-backdrop"><div class="modal"><h2>Set Up New Week</h2><div class="subtle">Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div><p>Last week's targets, focus skills, self-enquiry question, and homework were copied forward.</p><div class="btn-row"><button class="btn primary" data-action="review-week-setup">Review & Update</button><button class="btn" data-action="keep-week-setup">Use Previous Setup</button></div></div></div>`;}
-  if(m.type==='info'){ const t=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets].find(x=>x.id===m.targetId); if(!t) return ''; return `<div class="modal-backdrop"><div class="modal"><h2>${escapeHtml(t.label)}</h2><p>${escapeHtml(t.definition||'No definition entered.')}</p>${t.type==='scale'?`<div>${SCALE_ANCHORS.map(a=>`<div class="list-row"><span>${escapeHtml(a)}</span></div>`).join('')}</div>`:'<div class="subtle">Answer Yes or No. Unanswered remains blank.</div>'}<button class="btn primary wide" data-action="close-modal">Close</button></div></div>`; }
-  if(m.type==='event'){ const existing=m.eventId?getSelectedEntry().events.find(e=>e.id===m.eventId):null; return `<div class="modal-backdrop"><div class="modal"><h2>${existing?'Edit Event':'Add Event'}</h2><div class="field"><label>Context</label><input id="event-context" placeholder="Conversation after work" value="${escapeHtml(existing?.context||'')}"></div><div class="field"><label>Brief Note</label><textarea id="event-note" placeholder="Enough context to remember what happened later.">${escapeHtml(existing?.note||'')}</textarea></div><label class="check-row"><input type="checkbox" id="event-discuss" ${existing?.discuss?'checked':''}><span>Discuss in Therapy</span></label><div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="save-event" data-event-id="${existing?.id||''}">${existing?'Save Changes':'Save Event'}</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;}
-  if(m.type==='other-skill') return `<div class="modal-backdrop"><div class="modal"><h2>Other RO Skill</h2><div class="checkbox-list">${SKILLS.filter(s=>!appState.currentWeek.focusSkills.includes(s.id)).map(s=>`<label class="check-row"><input type="checkbox" data-other-skill="${s.id}" ${getSelectedEntry().skills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Done</button></div></div>`;
-  if(m.type==='saved-questions'){ const w=appState.currentWeek; const saved=w.savedSEPrompts.map(promptById).filter(Boolean); const fav=appState.profile.favoritePromptIds.map(promptById).filter(Boolean); return `<div class="modal-backdrop"><div class="modal"><h2>Saved Questions</h2><div class="section-kicker">This Week</div>${saved.length?saved.map(p=>`<div class="event-card">${escapeHtml(p.text)}</div>`).join(''):'<div class="subtle">None saved this week.</div>'}<div class="section-kicker" style="margin-top:16px">Favorites</div>${fav.length?fav.map(p=>`<div class="event-card">${escapeHtml(p.text)}</div>`).join(''):'<div class="subtle">No favorites yet.</div>'}<div class="section-kicker" style="margin-top:16px">My Questions</div>${appState.profile.myQuestions.length?appState.profile.myQuestions.map(q=>`<div class="event-card">${escapeHtml(q.text)}</div>`).join(''):'<div class="subtle">No personal questions yet.</div>'}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button></div></div>`;}
-  if(m.type==='my-question') return `<div class="modal-backdrop"><div class="modal"><h2>Add My Question</h2><div class="field"><label>Question</label><textarea id="my-question-text"></textarea></div><div class="btn-row"><button class="btn primary" data-action="save-my-question">Save</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
-  if(m.type==='complete'){return `<div class="modal-backdrop"><div class="modal"><h2>${m.date===todayStr()?'Complete Today':`Complete ${fmtLong(m.date)}`}</h2>${m.missing.length?`<div class="notice">${m.missing.length} target${m.missing.length===1?' is':'s are'} unanswered.</div>${m.missing.map(x=>`<div class="list-row"><span>${escapeHtml(x.label)}</span></div>`).join('')}<div class="btn-row" style="margin-top:12px"><button class="btn" data-action="close-modal">Go Back</button><button class="btn primary" data-action="fill-zero-complete">Set to 0 / No and Complete</button></div>`:`<div class="subtle">All targets are answered.</div><button class="btn primary wide" style="margin-top:12px" data-action="confirm-complete">Mark Today Complete</button>`}</div></div>`;}
-  if(m.type==='backup-password') return `<div class="modal-backdrop"><div class="modal"><h2>Create Encrypted Backup</h2><div class="field"><label>Backup password</label><input type="password" id="backup-pass1" autocomplete="new-password"></div><div class="field"><label>Confirm password</label><input type="password" id="backup-pass2" autocomplete="new-password"></div><div class="subtle">Use a strong password you can recover later. The app does not store it.</div>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="do-backup">Create Backup</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
-  if(m.type==='restore-password') return `<div class="modal-backdrop"><div class="modal"><h2>Restore Backup</h2><div class="field"><label>Backup password</label><input type="password" id="restore-pass"></div><div class="notice">Restore replaces the current vault after the backup is decrypted and validated.</div>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row"><button class="btn primary" data-action="do-restore">Validate & Restore</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
-  if(m.type==='change-pin') return `<div class="modal-backdrop"><div class="modal"><h2>Change Passcode</h2><div class="field"><label>Current 4-digit passcode</label><input type="password" inputmode="numeric" maxlength="4" id="old-pin"></div><div class="field"><label>New 4-digit passcode</label><input type="password" inputmode="numeric" maxlength="4" id="new-pin1"></div><div class="field"><label>Confirm new passcode</label><input type="password" inputmode="numeric" maxlength="4" id="new-pin2"></div>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row"><button class="btn primary" data-action="do-change-pin">Change</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+function renderModal(){
+  const m=appState.modal; if(!m) return '';
+  if(m.type==='week-start'){
+    const w=appState.currentWeek;
+    return `<div class="modal-backdrop"><div class="modal"><h2>Set Up New Week</h2><div class="subtle">Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div><p>Last week's targets, focus skills, self-enquiry question, and homework were copied forward.</p><div class="btn-row"><button class="btn primary" data-action="review-week-setup">Review & Update</button><button class="btn" data-action="keep-week-setup">Use Previous Setup</button></div></div></div>`;
+  }
+  if(m.type==='info'){
+    const t=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets].find(x=>x.id===m.targetId);
+    if(!t) return '';
+    return `<div class="modal-backdrop"><div class="modal"><h2>${escapeHtml(t.label)}</h2><p>${escapeHtml(t.definition||'No definition entered.')}</p>${t.type==='scale'?`<div>${SCALE_ANCHORS.map(a=>`<div class="list-row"><span>${escapeHtml(a)}</span></div>`).join('')}</div>`:'<div class="subtle">Answer Yes or No. Unanswered remains blank.</div>'}<button class="btn primary wide" data-action="close-modal">Close</button></div></div>`;
+  }
+  if(m.type==='event'){
+    const existing=m.eventId?getSelectedEntry().events.find(e=>e.id===m.eventId):null;
+    return `<div class="modal-backdrop"><div class="modal"><h2>${existing?'Edit Event':'Add Event'}</h2><div class="field"><label>Context</label><input id="event-context" placeholder="Conversation after work" value="${escapeHtml(existing?.context||'')}"></div><div class="field"><label>Brief Note</label><textarea id="event-note" placeholder="Enough context to remember what happened later.">${escapeHtml(existing?.note||'')}</textarea></div><label class="check-row"><input type="checkbox" id="event-discuss" ${existing?.discuss?'checked':''}><span>Discuss in Therapy</span></label><div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="save-event" data-event-id="${existing?.id||''}">${existing?'Save Changes':'Save Event'}</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+  }
+  if(m.type==='other-skill'){
+    const rows=SKILLS.filter(s=>!appState.currentWeek.focusSkills.includes(s.id) && s.id!=='fixed-fatalistic').map(s=>`<div class="skill-select-row"><label class="check-row skill-check"><input type="checkbox" data-other-skill="${s.id}" ${getSelectedEntry().skills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label><button class="info-btn" data-skill-info="${s.id}">i</button></div>`).join('');
+    return `<div class="modal-backdrop"><div class="modal"><h2>Other RO Skill</h2><div class="checkbox-list">${rows}</div><button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Done</button></div></div>`;
+  }
+  if(m.type==='skill-info'){
+    const s=skillById(m.skillId); if(!s) return '';
+    const steps=s.steps?.length?`<div class="field"><label>Quick guide</label><ol class="skill-steps">${s.steps.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ol></div>`:'';
+    return `<div class="modal-backdrop"><div class="modal"><h2>${escapeHtml(s.name)}</h2><div class="skill-ref">${escapeHtml(s.reference||'')}</div><div class="field"><label>What it is for</label><div>${escapeHtml(s.purpose||'')}</div></div><div class="field"><label>When it may be useful</label><div>${escapeHtml(s.useWhen||'')}</div></div>${steps}<div class="subtle">This is a brief reference, not a replacement for the RO-DBT handout/worksheet.</div><button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button></div></div>`;
+  }
+  if(m.type==='saved-questions'){
+    const w=appState.currentWeek;
+    const saved=w.savedSEPrompts.map(promptById).filter(Boolean);
+    const fav=appState.profile.favoritePromptIds.map(promptById).filter(Boolean);
+    const savedHtml=saved.length?saved.map(p=>`<div class="event-card"><div class="prompt-category">${escapeHtml(categoryLabel(p.category))}</div>${escapeHtml(p.text)}</div>`).join(''):'<div class="subtle">None saved this week.</div>';
+    const discoveredHtml=w.newSEQuestions.length?w.newSEQuestions.map(q=>`<div class="event-card"><div>${escapeHtml(q.text)}</div><div class="event-actions"><button class="btn danger" data-action="delete-week-question" data-question-id="${q.id}">Delete</button></div></div>`).join(''):'<div class="subtle">None added this week.</div>';
+    const favHtml=fav.length?fav.map(p=>`<div class="event-card"><div class="prompt-category">${escapeHtml(categoryLabel(p.category))}</div>${escapeHtml(p.text)}</div>`).join(''):'<div class="subtle">No favorites yet.</div>';
+    const myHtml=appState.profile.myQuestions.length?appState.profile.myQuestions.map(q=>`<div class="event-card"><div>${escapeHtml(q.text)}</div><div class="event-actions"><button class="btn danger" data-action="delete-my-question" data-question-id="${q.id}">Delete</button></div></div>`).join(''):'<div class="subtle">No personal questions yet.</div>';
+    return `<div class="modal-backdrop"><div class="modal"><h2>Saved Questions</h2><div class="section-kicker">Saved This Week</div>${savedHtml}<div class="section-kicker" style="margin-top:16px">Questions I Discovered This Week</div>${discoveredHtml}<div class="section-kicker" style="margin-top:16px">Favorites</div>${favHtml}<div class="section-kicker" style="margin-top:16px">My Question Library</div>${myHtml}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button></div></div>`;
+  }
+  if(m.type==='week-question'){
+    return `<div class="modal-backdrop"><div class="modal"><h2>Question I Discovered</h2><div class="subtle">Optional: save a self-enquiry question that emerged for you during this therapy week.</div><div class="field"><label>Question</label><textarea id="week-question-text"></textarea></div><div class="btn-row"><button class="btn primary" data-action="save-week-question">Save for This Week</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+  }
+  if(m.type==='my-question'){
+    return `<div class="modal-backdrop"><div class="modal"><h2>Add My Question</h2><div class="field"><label>Question</label><textarea id="my-question-text"></textarea></div><div class="btn-row"><button class="btn primary" data-action="save-my-question">Save</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+  }
+  if(m.type==='complete'){
+    const missing=m.missing.length?`<div class="notice">${m.missing.length} target${m.missing.length===1?' is':'s are'} unanswered.</div>${m.missing.map(x=>`<div class="list-row"><span>${escapeHtml(x.label)}</span></div>`).join('')}<div class="btn-row" style="margin-top:12px"><button class="btn" data-action="close-modal">Go Back</button><button class="btn primary" data-action="fill-zero-complete">Set to 0 / No and Complete</button></div>`:`<div class="subtle">All targets are answered.</div><button class="btn primary wide" style="margin-top:12px" data-action="confirm-complete">Mark Today Complete</button>`;
+    return `<div class="modal-backdrop"><div class="modal"><h2>${m.date===todayStr()?'Complete Today':`Complete ${fmtLong(m.date)}`}</h2>${missing}</div></div>`;
+  }
+  if(m.type==='backup-password'){
+    return `<div class="modal-backdrop"><div class="modal"><h2>Create Encrypted Backup</h2><div class="field"><label>Backup password</label><input type="password" id="backup-pass1" autocomplete="new-password"></div><div class="field"><label>Confirm password</label><input type="password" id="backup-pass2" autocomplete="new-password"></div><div class="subtle">Use a strong password you can recover later. The app does not store it.</div>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="do-backup">Create Backup</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+  }
+  if(m.type==='restore-password'){
+    return `<div class="modal-backdrop"><div class="modal"><h2>Restore Backup</h2><div class="field"><label>Backup password</label><input type="password" id="restore-pass"></div><div class="notice">Restore replaces the current vault after the backup is decrypted and validated.</div>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row"><button class="btn primary" data-action="do-restore">Validate & Restore</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+  }
+  if(m.type==='change-pin'){
+    return `<div class="modal-backdrop"><div class="modal"><h2>Change Passcode</h2><div class="field"><label>Current 4-digit passcode</label><input type="password" inputmode="numeric" maxlength="4" id="old-pin"></div><div class="field"><label>New 4-digit passcode</label><input type="password" inputmode="numeric" maxlength="4" id="new-pin1"></div><div class="field"><label>Confirm new passcode</label><input type="password" inputmode="numeric" maxlength="4" id="new-pin2"></div>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row"><button class="btn primary" data-action="do-change-pin">Change</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+  }
   if(m.type==='archive-view') return renderArchiveModal(m.week);
+  if(m.type==='delete-week'){
+    return `<div class="modal-backdrop"><div class="modal"><h2>Delete Therapy Week?</h2><div class="notice">This permanently removes ${escapeHtml(fmtDate(m.week.startDate))} – ${escapeHtml(fmtDate(m.week.endDate))} from this device. Create an encrypted backup first if you may want it later.</div><div class="btn-row"><button class="btn danger" data-action="confirm-delete-week" data-week-id="${m.week.id}">Delete Week Permanently</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+  }
   return '';
 }
 
-function renderArchiveModal(w){const dates=weekDates(w); return `<div class="modal-backdrop"><div class="modal"><h2>${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</h2><div class="section-kicker">Private</div>${renderRatingsTable(w.privateTargets,w)}<div class="section-kicker" style="margin-top:14px">Social</div>${renderRatingsTable(w.socialTargets,w)}<div class="section-kicker" style="margin-top:14px">Discuss in Therapy</div>${dates.flatMap(d=>w.days[d].events.filter(e=>e.discuss).map(e=>`<div class="event-card"><strong>${fmtDay(d)} — ${escapeHtml(e.context)}</strong><div>${escapeHtml(e.note)}</div></div>`)).join('')||'<div class="subtle">None flagged.</div>'}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button></div></div>`;}
+function renderArchiveModal(w){const dates=weekDates(w); const canDelete=w.id!==appState.currentWeek.id; return `<div class="modal-backdrop"><div class="modal"><h2>${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</h2><div class="section-kicker">Private</div>${renderRatingsTable(w.privateTargets,w)}<div class="section-kicker" style="margin-top:14px">Social</div>${renderRatingsTable(w.socialTargets,w)}<div class="section-kicker" style="margin-top:14px">Discuss in Therapy</div>${dates.flatMap(d=>w.days[d].events.filter(e=>e.discuss).map(e=>`<div class="event-card"><strong>${fmtDay(d)} — ${escapeHtml(e.context)}</strong><div>${escapeHtml(e.note)}</div></div>`)).join('')||'<div class="subtle">None flagged.</div>'}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button>${canDelete?`<button class="btn danger wide" style="margin-top:8px" data-action="request-delete-week" data-week-id="${w.id}">Delete This Week…</button>`:''}</div></div>`;}
 
 function renderPrintRatingsTable(targets,w){const dates=weekDates(w);return `<table class="report-table"><thead><tr><th>Target</th>${dates.map(d=>`<th>${fmtDay(d)}<br><span>${fmtDate(d,{month:'numeric',day:'numeric'})}</span></th>`).join('')}</tr></thead><tbody>${targets.map(t=>`<tr><td>${escapeHtml(t.label)}</td>${dates.map(d=>{const v=targetValue(w.days[d],t.id);return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table>`;}
 function renderPrintCompletion(w){const dates=weekDates(w);return `<table class="report-table completion-table"><thead><tr>${dates.map(d=>`<th>${fmtDay(d)}<br><span>${fmtDate(d,{month:'numeric',day:'numeric'})}</span></th>`).join('')}</tr></thead><tbody><tr>${dates.map(d=>`<td>${w.days[d].completed?'Complete':'Incomplete'}</td>`).join('')}</tr></tbody></table>`;}
@@ -556,7 +710,7 @@ function renderPrintReport(){
     <h2>Social Signals & Overt Behaviors</h2>${renderPrintRatingsTable(w.socialTargets,w)}
     <h2>Skills Used</h2>${renderPrintSkills(w)}
     <h2>Notes / Events</h2>${events.length?events.map(e=>`<div class="report-event ${e.discuss?'report-event-flagged':''}"><div><strong>${fmtDay(e.date)} ${fmtDate(e.date,{month:'numeric',day:'numeric'})}${e.context?` — ${escapeHtml(e.context)}`:''}</strong>${e.discuss?' <span class="report-flag">Discuss in Therapy</span>':''}</div>${e.note?`<div class="report-event-note">${escapeHtml(e.note)}</div>`:''}</div>`).join(''):'<div class="report-empty">No notes or events recorded.</div>'}
-    <h2>Self-Enquiry</h2><div class="report-context-row"><strong>Weekly focus:</strong> ${escapeHtml(w.weeklySEFocus||'—')}</div>${saved.length?`<div class="report-context-row"><strong>Saved questions this week:</strong><ul>${saved.map(p=>`<li>${escapeHtml(p.text)}</li>`).join('')}</ul></div>`:''}
+    <h2>Self-Enquiry</h2><div class="report-context-row"><strong>Weekly focus:</strong> ${escapeHtml(w.weeklySEFocus||'—')}</div>${saved.length?`<div class="report-context-row"><strong>Saved prompts this week:</strong><ul>${saved.map(p=>`<li>${escapeHtml(p.text)}</li>`).join('')}</ul></div>`:''}${(w.newSEQuestions||[]).length?`<div class="report-context-row"><strong>Questions discovered this week:</strong><ul>${w.newSEQuestions.map(q=>`<li>${escapeHtml(q.text)}</li>`).join('')}</ul></div>`:''}
     <h2>Week Context</h2><div class="report-context-row"><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div class="report-context-row"><strong>Valued Goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${oc}
     <div class="report-footer">Generated locally by RO Diary ${APP_VERSION} • ${escapeHtml(new Date().toLocaleString())}</div>
   </div>`;
@@ -584,6 +738,7 @@ function bindApp(){
   $('[data-action="back-page"]')?.addEventListener('click',()=>{appState.page=null;appState.nav='more';render();});
   $$('[data-target]').forEach(b=>b.addEventListener('click',()=>{const day=getSelectedEntry();let v=b.dataset.value; if(v==='true')v=true; else if(v==='false')v=false; else v=Number(v); setTargetValue(day,b.dataset.target,v);}));
   $$('[data-info]').forEach(b=>b.addEventListener('click',()=>{appState.modal={type:'info',targetId:b.dataset.info};render({preserveScroll:true});}));
+  $$('[data-skill-info]').forEach(b=>b.addEventListener('click',()=>{appState.modal={type:'skill-info',skillId:b.dataset.skillInfo};render({preserveScroll:true});}));
   $$('[data-skill]').forEach(c=>c.addEventListener('change',()=>toggleSkill(c.dataset.skill,c.checked)));
   $$('[data-other-skill]').forEach(c=>c.addEventListener('change',()=>toggleSkill(c.dataset.otherSkill,c.checked,false)));
   $$('[data-focus-skill]').forEach(c=>c.addEventListener('change',()=>toggleFocusSkill(c.dataset.focusSkill,c.checked)));
@@ -595,6 +750,7 @@ function bindApp(){
   $$('[data-delete-target]').forEach(b=>b.addEventListener('click',()=>deleteTarget(b.dataset.kind,b.dataset.deleteTarget)));
   $('#pdf-name')?.addEventListener('change',e=>{appState.profile.pdfName=e.target.value;queueSaveProfile();});
   $('#week-start')?.addEventListener('change',e=>{appState.profile.therapyWeekStart=Number(e.target.value);queueSaveProfile();});
+  $('#se-category')?.addEventListener('change',e=>{appState.seCategory=e.target.value;appState.currentPromptId=null;choosePrompt();render();});
 }
 function toggleSkill(id,checked,doRender=true){const d=getSelectedEntry(); if(checked&&!d.skills.includes(id))d.skills.push(id); if(!checked)d.skills=d.skills.filter(x=>x!==id); d.modifiedAt=new Date().toISOString(); if(d.completed){d.completed=false;d.completedAt=null;} queueSaveWeek(); if(doRender)updateCompletionUi(d);}
 function toggleFocusSkill(id,checked){const w=appState.currentWeek;if(checked){if(w.focusSkills.length>=5){alert('Choose up to five focus skills.');render();return;} if(!w.focusSkills.includes(id))w.focusSkills.push(id);}else w.focusSkills=w.focusSkills.filter(x=>x!==id);queueSaveWeek();render();}
@@ -627,6 +783,7 @@ function buildPdfReportData(){
     events,
     weeklySEFocus:w.weeklySEFocus||'—',
     savedQuestions:saved,
+    discoveredQuestions:(w.newSEQuestions||[]).map(q=>q.text),
     homework:w.homework||'—',
     valuedGoal:w.valuedGoal||'—',
     majorOCTheme:(w.majorOCThemeEnabled && w.majorOCTheme)?w.majorOCTheme:'',
@@ -678,6 +835,10 @@ async function handleAction(a,b){
   if(a==='favorite-prompt'){const id=appState.currentPromptId;const arr=appState.profile.favoritePromptIds;appState.profile.favoritePromptIds=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];queueSaveProfile();render();return;}
   if(a==='reject-prompt'){const id=appState.currentPromptId;if(!appState.profile.notUsefulPromptIds.includes(id))appState.profile.notUsefulPromptIds.push(id);queueSaveProfile();choosePrompt();render();return;}
   if(a==='saved-questions'){appState.modal={type:'saved-questions'};render({preserveScroll:true});return;}
+  if(a==='add-week-question'){appState.modal={type:'week-question'};render({preserveScroll:true});return;}
+  if(a==='save-week-question'){const text=$('#week-question-text')?.value.trim();if(text){appState.currentWeek.newSEQuestions.push({id:uid(),text,createdAt:new Date().toISOString()});queueSaveWeek();}appState.modal=null;render();return;}
+  if(a==='delete-week-question'){const id=b.dataset.questionId;if(confirm('Delete this self-enquiry question from the current week?')){appState.currentWeek.newSEQuestions=appState.currentWeek.newSEQuestions.filter(q=>q.id!==id);queueSaveWeek();appState.modal={type:'saved-questions'};render();}return;}
+  if(a==='delete-my-question'){const id=b.dataset.questionId;if(confirm('Delete this question from My Question Library?')){appState.profile.myQuestions=appState.profile.myQuestions.filter(q=>q.id!==id);queueSaveProfile();appState.modal={type:'saved-questions'};render();}return;}
   if(a==='add-my-question'){appState.modal={type:'my-question'};render();return;}
   if(a==='save-my-question'){const text=$('#my-question-text')?.value.trim();if(text){appState.profile.myQuestions.push({id:uid(),text,createdAt:new Date().toISOString()});queueSaveProfile();}appState.modal=null;render();return;}
   if(a==='print-report'){printTherapistReport();return;}
@@ -690,8 +851,21 @@ async function handleAction(a,b){
   if(a==='do-change-pin'){await changePinFromModal();return;}
   if(a==='add-target'){const kind=b.dataset.kind;const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;arr.push({id:uid(),label:'New Target',definition:'',type:'scale',order:arr.length});queueSaveWeek();render();return;}
   if(a==='open-archive'){const w=await loadRecord(`week:${b.dataset.weekId}`);appState.modal={type:'archive-view',week:w};render();return;}
+  if(a==='request-delete-week'){const w=await loadRecord(`week:${b.dataset.weekId}`);if(!w||w.id===appState.currentWeek.id)return;appState.modal={type:'delete-week',week:w};render();return;}
+  if(a==='confirm-delete-week'){await deleteArchivedWeek(b.dataset.weekId);return;}
 }
 function completeDay(d){d.completed=true;d.completedAt=new Date().toISOString();d.modifiedAt=d.completedAt;queueSaveWeek();appState.modal=null;render({preserveScroll:true});}
+
+async function deleteArchivedWeek(id){
+  if(!id || id===appState.currentWeek.id){alert('The current therapy week cannot be deleted.');return;}
+  await appState.saveChain;
+  const week=await loadRecord(`week:${id}`); if(!week){appState.modal=null;render();return;}
+  await idbDelete('records',`week:${id}`);
+  appState.profile.weekIds=appState.profile.weekIds.filter(x=>x!==id);
+  appState.profile.modifiedAt=new Date().toISOString();
+  await saveRecord('profile',appState.profile);
+  appState.modal=null; appState.page='archive'; appState.nav='more'; render(); hydrateArchiveLabels();
+}
 
 async function hydrateArchiveLabels(){const rows=$$('[data-week-id]');for(const row of rows){const id=row.dataset.weekId;const w=await loadRecord(`week:${id}`);if(w){const span=row.querySelector('span');span.textContent=`${fmtDate(w.startDate)} – ${fmtDate(w.endDate)} ${w.id===appState.currentWeek.id?'(Current)':w.archived?'':'(Past)'}`;}}}
 
@@ -713,7 +887,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.3.0').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.4.0').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 
