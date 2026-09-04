@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.4.0-beta';
+const APP_VERSION = '0.5.1-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 1;
@@ -35,6 +35,23 @@ const SCALE_ANCHORS = [
   '4 — Severe / intense',
   '5 — Most extreme level for you'
 ];
+
+const CLINICAL_DAILY_FIELDS = [
+  {id:'suicideUrge', label:'Urge to Commit Suicide', type:'scale'},
+  {id:'tookPrescribedMeds', label:'Take Prescribed Meds', type:'yn'},
+  {id:'otherDrugsAlcohol', label:'Other Drugs & Alcohol', type:'yn'}
+];
+
+const THERAPY_PROCESS_FIELDS = [
+  {id:'understood', label:'Feeling Understood by Therapist'},
+  {id:'relevant', label:'Therapy Relevant to My Unique Problems'},
+  {id:'rupture', label:'Alliance Rupture'},
+  {id:'quitTherapy', label:'Urge to Quit Therapy'},
+  {id:'giveUp', label:'Urge to Give Up'}
+];
+
+function blankClinicalDaily(){return {suicideUrge:null,tookPrescribedMeds:null,otherDrugsAlcohol:null};}
+function blankTherapyProcess(){return {understood:null,relevant:null,rupture:null,quitTherapy:null,giveUp:null};}
 
 const SKILLS = [
   {id:'definitely', name:'DEFinitely', lesson:1, reference:'Lesson 1 • Handout 1.2–1.3 • Worksheet 1.B', purpose:'A three-part radical-openness practice for moments when you notice distress, tension, resistance, or closedness.', useWhen:'Useful when you feel criticized, invalidated, irritated, judgmental, shut down, defensive, uncertain, or strongly pulled to avoid or fix the experience.', steps:[
@@ -363,7 +380,7 @@ async function unlockVault(pin) {
 function buildNewWeek(startDate, previous=null) {
   const start=typeof startDate==='string'?parseDateOnly(startDate):startDate; const end=addDays(start,6);
   const id=uid(); const days={}; const now=new Date().toISOString();
-  for(let i=0;i<7;i++){ const ds=toDateOnly(addDays(start,i)); days[ds]={date:ds,ratings:{},skills:[],events:[],completed:false,completedAt:null,modifiedAt:now}; }
+  for(let i=0;i<7;i++){ const ds=toDateOnly(addDays(start,i)); days[ds]={date:ds,ratings:{},clinical:blankClinicalDaily(),skills:[],events:[],completed:false,completedAt:null,modifiedAt:now}; }
   return {
     id,startDate:toDateOnly(start),endDate:toDateOnly(end),
     privateTargets:structuredClone(previous?.privateTargets || DEFAULT_PRIVATE_TARGETS),
@@ -371,7 +388,10 @@ function buildNewWeek(startDate, previous=null) {
     focusSkills:[...(previous?.focusSkills || DEFAULT_FOCUS_SKILLS)],
     weeklySEFocus:previous?.weeklySEFocus || DEFAULT_SE_FOCUS,
     homework:previous?.homework || DEFAULT_HOMEWORK,
-    valuedGoal:previous?.valuedGoal || '', majorOCTheme:'', majorOCThemeEnabled:false,
+    valuedGoal:previous?.valuedGoal || '',
+    majorOCTheme:'', majorOCThemeEnabled:!!previous?.majorOCThemeEnabled,
+    therapyProcessEnabled:!!previous?.therapyProcessEnabled, therapyProcess:blankTherapyProcess(),
+    riskTrackingEnabled:!!previous?.riskTrackingEnabled,
     savedSEPrompts:[], newSEQuestions:[], days, archived:false,
     setupStatus:previous?'pending':'confirmed', setupConfirmedAt:previous?null:now,
     createdAt:now,modifiedAt:now
@@ -381,7 +401,7 @@ function buildNewWeek(startDate, previous=null) {
 async function initializeFreshData() {
   const start=getWeekStart(new Date(),WEEK_START_DAY); const week=buildNewWeek(start);
   const profile={
-    version:2,therapyWeekStart:WEEK_START_DAY,currentWeekId:week.id,weekIds:[week.id],
+    version:3,therapyWeekStart:WEEK_START_DAY,currentWeekId:week.id,weekIds:[week.id],
     pdfName:'Brooke',lastBackupAt:null,createdAt:new Date().toISOString(),modifiedAt:new Date().toISOString(),
     favoritePromptIds:[],notUsefulPromptIds:[],recentPromptIds:[],myQuestions:[]
   };
@@ -408,12 +428,21 @@ async function loadAppData() {
   }
   week.savedSEPrompts=Array.isArray(week.savedSEPrompts)?week.savedSEPrompts:[];
   week.newSEQuestions=Array.isArray(week.newSEQuestions)?week.newSEQuestions:[];
+  if(typeof week.majorOCThemeEnabled!=='boolean'){week.majorOCThemeEnabled=false;saveWeekNeeded=true;}
+  if(typeof week.therapyProcessEnabled!=='boolean'){week.therapyProcessEnabled=false;saveWeekNeeded=true;}
+  if(!week.therapyProcess || typeof week.therapyProcess!=='object'){week.therapyProcess=blankTherapyProcess();saveWeekNeeded=true;}
+  else {for(const f of THERAPY_PROCESS_FIELDS){if(!Object.prototype.hasOwnProperty.call(week.therapyProcess,f.id)){week.therapyProcess[f.id]=null;saveWeekNeeded=true;}}}
+  if(typeof week.riskTrackingEnabled!=='boolean'){week.riskTrackingEnabled=false;saveWeekNeeded=true;}
+  for(const d of Object.values(week.days)){if(!d.clinical || typeof d.clinical!=='object'){d.clinical=blankClinicalDaily();saveWeekNeeded=true;}else{for(const f of CLINICAL_DAILY_FIELDS){if(!Object.prototype.hasOwnProperty.call(d.clinical,f.id)){d.clinical[f.id]=null;saveWeekNeeded=true;}}}}
   // One-time upgrade: prompt to review the current week's copied setup without changing any diary data.
   if((profile.version||1)<2){
-    profile.version=2; saveProfileNeeded=true;
+    profile.version=3; saveProfileNeeded=true;
     if(!week.setupStatus){week.setupStatus='pending';week.setupConfirmedAt=null;saveWeekNeeded=true;}
-  } else if(!week.setupStatus){
-    week.setupStatus='confirmed';week.setupConfirmedAt=week.createdAt||new Date().toISOString();saveWeekNeeded=true;
+  } else {
+    if((profile.version||1)<3){profile.version=3;saveProfileNeeded=true;}
+    if(!week.setupStatus){
+      week.setupStatus='confirmed';week.setupConfirmedAt=week.createdAt||new Date().toISOString();saveWeekNeeded=true;
+    }
   }
   if(saveWeekNeeded) await saveRecord(`week:${week.id}`,week);
   if(saveProfileNeeded) await saveRecord('profile',profile);
@@ -478,6 +507,17 @@ function setTargetValue(day,id,val){
   });
   updateCompletionUi(day);
 }
+function clinicalValue(day,id){return day.clinical && Object.prototype.hasOwnProperty.call(day.clinical,id)?day.clinical[id]:null;}
+function setClinicalValue(day,id,val){
+  day.clinical=day.clinical||blankClinicalDaily();day.clinical[id]=val;day.modifiedAt=new Date().toISOString();
+  if(day.completed){day.completed=false;day.completedAt=null;}queueSaveWeek();
+  $$(`[data-clinical-target="${CSS.escape(id)}"]`).forEach(btn=>{let v=btn.dataset.value;if(v==='true')v=true;else if(v==='false')v=false;else v=Number(v);btn.classList.toggle('selected',v===val);});
+  updateCompletionUi(day);
+}
+function setTherapyProcessValue(id,val){
+  const w=appState.currentWeek;w.therapyProcess=w.therapyProcess||blankTherapyProcess();w.therapyProcess[id]=val;queueSaveWeek();
+  $$(`[data-process-target="${CSS.escape(id)}"]`).forEach(btn=>{const v=Number(btn.dataset.value);btn.classList.toggle('selected',v===val);});
+}
 function skillById(id){ return SKILLS.find(s=>s.id===id); }
 function skillName(id){ return skillById(id)?.name || id; }
 function promptById(id){ return SE_PROMPTS.find(p=>p.id===id); }
@@ -519,6 +559,7 @@ function renderAppShell() {
   const nav=appState.nav;
   let body='';
   if(appState.page==='week-setup') body=renderWeekSetup();
+  else if(appState.page==='setup-guide') body=renderSetupGuide();
   else if(appState.page==='archive') body=renderArchive();
   else if(appState.page==='skills') body=renderSkillsReference();
   else if(appState.page==='settings') body=renderSettings();
@@ -526,7 +567,7 @@ function renderAppShell() {
   else if(nav==='se') body=renderSE();
   else if(nav==='review') body=renderReview();
   else body=renderMore();
-  const title=appState.page ? ({'week-setup':'Week Setup','archive':'Archive','skills':'RO Skills','settings':'Settings'}[appState.page]) : 'RO Diary';
+  const title=appState.page ? ({'week-setup':'Week Setup','setup-guide':'Setup Guide','archive':'Archive','skills':'RO Skills','settings':'Settings'}[appState.page]) : 'RO Diary';
   return `<div class="app-shell">
     <header class="topbar"><div class="topbar-row"><div class="brand">${title}</div><div class="status-pill">${day?.completed?`${day.date===todayStr()?'Today':fmtDay(day.date)} complete`:'Private • Local'}</div></div></header>
     <main class="content">${body}${appState.saveError?`<div class="notice">Save problem: ${escapeHtml(appState.saveError)}</div>`:''}</main>
@@ -558,11 +599,16 @@ function renderDayNavigator(w,day){
   return `<div class="day-nav"><button class="btn day-nav-btn" data-action="day-prev" ${idx<=0?'disabled':''}>‹ Previous</button><button class="btn day-nav-btn" data-action="day-today" ${!todayAvailable?'disabled':''}>Today</button><button class="btn day-nav-btn" data-action="day-next" ${idx<0||idx>=dates.length-1?'disabled':''}>Next ›</button></div>`;
 }
 
+function renderClinicalDailyField(field,day){const val=clinicalValue(day,field.id);if(field.type==='yn')return `<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(field.label)}</div></div><div class="scale yesno"><button class="score-btn ${val===false?'selected':''}" data-clinical-target="${field.id}" data-value="false">No</button><button class="score-btn ${val===true?'selected':''}" data-clinical-target="${field.id}" data-value="true">Yes</button></div></div>`;return `<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(field.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${val===n?'selected':''}" data-clinical-target="${field.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`;}
+function renderClinicalDailySection(w,day){if(!w.riskTrackingEnabled)return '';return `<section class="card"><div class="card-header"><div class="section-kicker">Optional clinical tracking</div><div class="section-title">Risk, Medication & Substance</div></div><div class="card-body"><div class="subtle small">These fields mirror the optional Houston/Lynch-style diary-card items. Unanswered remains blank. RO Diary is not monitored and does not alert your therapist or emergency services.</div>${CLINICAL_DAILY_FIELDS.map(f=>renderClinicalDailyField(f,day)).join('')}</div></section>`;}
+function renderProcessRatings(w){if(!w.therapyProcessEnabled)return '';const vals=w.therapyProcess||blankTherapyProcess();return `<section class="card"><div class="card-header"><div class="section-kicker">Before therapy</div><div class="section-title">Therapy Alliance & Process</div></div><div class="card-body"><div class="subtle small">Rate 0–5 just prior to the session, matching the Houston diary-card structure.</div>${THERAPY_PROCESS_FIELDS.map(f=>`<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(f.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${vals[f.id]===n?'selected':''}" data-process-target="${f.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`).join('')}</div></section>`;}
+
 function renderToday(day) {
   const w=appState.currentWeek; if(!day) return '<div class="notice">No daily entry is available.</div>';
   const focusSkills=w.focusSkills.map(id=>SKILLS.find(s=>s.id===id)).filter(Boolean);
   return `${renderDayNavigator(w,day)}<h1 class="page-title">${escapeHtml(fmtLong(day.date))}</h1><div class="subtle">Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
     ${day.date!==todayStr()?'<div class="notice history-notice">Viewing an earlier day. If you change a completed entry, it will become incomplete until you complete it again.</div>':''}
+    ${renderClinicalDailySection(w,day)}
     ${renderTargetSection('What I noticed internally','Private Behaviors, Emotions & Urges',w.privateTargets,day)}
     ${renderTargetSection('What I signaled or did','Social Signals & Overt Behaviors',w.socialTargets,day)}
     <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body"><div class="checkbox-list">
@@ -605,25 +651,72 @@ function renderReview(){const w=appState.currentWeek; const dates=weekDates(w); 
  const needsBackup=!appState.profile.lastBackupAt || (Date.now()-new Date(appState.profile.lastBackupAt).getTime()>7*86400000);
  return `<h1 class="page-title">Weekly Review</h1><div class="subtle">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>${needsBackup?'<div class="notice">A current encrypted backup is recommended this week.</div>':''}
  <section class="card"><div class="card-header"><div class="section-kicker">Completion</div></div><div class="card-body"><div class="btn-row">${dates.map(d=>`<span class="status-pill">${fmtDay(d)} ${w.days[d].completed?'✓':'○'}</span>`).join('')}</div></div></section>
+ ${w.riskTrackingEnabled?`<section class="card"><div class="card-header"><div class="section-kicker">Risk, medication & substance</div></div><div class="card-body"><div class="table-wrap"><table><thead><tr><th>Field</th>${dates.map(d=>`<th>${fmtDay(d)}</th>`).join('')}</tr></thead><tbody>${CLINICAL_DAILY_FIELDS.map(f=>`<tr><td>${escapeHtml(f.label)}</td>${dates.map(d=>{const v=clinicalValue(w.days[d],f.id);return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div></div></section>`:''}
  <section class="card"><div class="card-header"><div class="section-kicker">Private behaviors, emotions & urges</div></div><div class="card-body">${renderRatingsTable(w.privateTargets,w)}</div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Social signals & overt behaviors</div></div><div class="card-body">${renderRatingsTable(w.socialTargets,w)}</div></section>
+ ${renderProcessRatings(w)}
  <section class="card"><div class="card-header"><div class="section-kicker">Discuss in Therapy</div></div><div class="card-body">${flagged.length?flagged.map(e=>`<div class="event-card"><div class="event-context">${fmtDay(e.date)} — ${escapeHtml(e.context||'Event')}</div><div class="event-note">${escapeHtml(e.note||'')}</div></div>`).join(''):'<div class="subtle">No events flagged.</div>'}</div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body">${Object.keys(skillMap).length?Object.entries(skillMap).map(([s,ds])=>`<div class="list-row"><strong>${escapeHtml(skillName(s))}</strong><span class="small">${ds.join(', ')}</span></div>`).join(''):'<div class="subtle">No skills recorded.</div>'}</div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry</div></div><div class="card-body"><div><strong>Weekly focus:</strong><br>${escapeHtml(w.weeklySEFocus||'—')}</div><div style="margin-top:10px"><strong>Saved prompts:</strong> ${w.savedSEPrompts.length}</div><div style="margin-top:6px"><strong>Questions discovered:</strong> ${(w.newSEQuestions||[]).length}</div></div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">Week context</div></div><div class="card-body"><div><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div style="margin-top:8px"><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">Week context</div></div><div class="card-body"><div><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div style="margin-top:8px"><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${w.majorOCThemeEnabled?`<div style="margin-top:8px"><strong>Major OC Theme:</strong> ${escapeHtml(w.majorOCTheme||'—')}</div>`:''}</div></section>
  <section class="card"><div class="card-body"><button class="btn primary wide" data-action="print-report">Export Therapist PDF</button><button class="btn wide" style="margin-top:8px" data-action="backup">Create Encrypted Backup</button></div></section>`;}
 
 function renderMore(){ const p=appState.profile; return `<h1 class="page-title">More</h1><section class="card"><div class="card-body menu-list">
-  <button class="btn" data-page="week-setup">Week Setup</button><button class="btn" data-page="archive">Archive</button><button class="btn" data-page="skills">RO Skills Reference</button><button class="btn" data-page="settings">Settings</button>
+  <button class="btn" data-page="week-setup">Week Setup</button><button class="btn" data-page="setup-guide">How to Set Up Your Diary Card</button><button class="btn" data-page="archive">Archive</button><button class="btn" data-page="skills">RO Skills Reference</button><button class="btn" data-page="settings">Settings</button>
  </div></section><section class="card"><div class="card-body"><div class="list-row"><strong>Last encrypted backup</strong><span class="small">${p.lastBackupAt?new Date(p.lastBackupAt).toLocaleString():'None yet'}</span></div><button class="btn primary wide" style="margin-top:10px" data-action="backup">Create Encrypted Backup</button><button class="btn wide" style="margin-top:8px" data-action="restore">Restore Backup</button></div></section><div class="subtle">RO Diary ${APP_VERSION}. Data stays on this device unless you deliberately export it.</div>`;}
 
-function renderWeekSetup(){const w=appState.currentWeek; return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Week Setup</h1><div class="subtle">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
+function renderWeekSetup(){const w=appState.currentWeek; return `<div class="btn-row"><button class="btn" data-action="back-page">← Back</button><button class="btn soft" data-page="setup-guide">Setup Guide</button></div><h1 class="page-title">Week Setup</h1><div class="subtle">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
  ${w.setupStatus==='pending'?'<div class="notice">This new week copied the prior week&apos;s setup. Review anything that changed in therapy, then finish setup.</div>':''}
  <section class="card"><div class="card-header"><div class="section-kicker">Private targets</div></div><div class="card-body">${renderTargetEditors(w.privateTargets,'private')}<button class="btn soft wide" data-action="add-target" data-kind="private">+ Add Private Target</button></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Social signals</div></div><div class="card-body">${renderTargetEditors(w.socialTargets,'social')}<button class="btn soft wide" data-action="add-target" data-kind="social">+ Add Social Target</button></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Weekly focus skills</div></div><div class="card-body"><div class="checkbox-list">${SKILLS.filter(s=>s.id!=='fixed-fatalistic').map(s=>`<label class="check-row"><input type="checkbox" data-focus-skill="${s.id}" ${w.focusSkills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><div class="subtle" style="margin-top:8px">Choose up to five focus skills. Other skills remain available on the daily card.</div></div></section>
  <section class="card"><div class="card-body"><div class="field"><label>Weekly self-enquiry focus</label><textarea data-week-field="weeklySEFocus">${escapeHtml(w.weeklySEFocus)}</textarea></div><div class="field"><label>Skills-class homework</label><input data-week-field="homework" value="${escapeHtml(w.homework)}"></div><div class="field"><label>Valued goal (optional)</label><input data-week-field="valuedGoal" value="${escapeHtml(w.valuedGoal)}"></div></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">Optional RO-DBT fields</div></div><div class="card-body"><div class="checkbox-list">
+   <label class="check-row"><input type="checkbox" data-week-toggle="majorOCThemeEnabled" ${w.majorOCThemeEnabled?'checked':''}><span>Major OC Theme</span></label>
+   <label class="check-row"><input type="checkbox" data-week-toggle="therapyProcessEnabled" ${w.therapyProcessEnabled?'checked':''}><span>Therapy Alliance / Process Ratings</span></label>
+   <label class="check-row"><input type="checkbox" data-week-toggle="riskTrackingEnabled" ${w.riskTrackingEnabled?'checked':''}><span>Risk / Medication / Substance Fields</span></label>
+ </div>${w.majorOCThemeEnabled?`<div class="field"><label>Major OC Theme this week</label><input data-week-field="majorOCTheme" value="${escapeHtml(w.majorOCTheme||'')}"></div>`:''}${w.therapyProcessEnabled?'<div class="subtle small" style="margin-top:10px">Therapy-process ratings are entered from Weekly Review just prior to the session.</div>':''}${w.riskTrackingEnabled?'<div class="subtle small" style="margin-top:6px">Risk/medication/substance fields appear on each daily entry.</div>':''}</div></section>
  ${w.setupStatus==='pending'?'<section class="card"><div class="card-body"><button class="btn primary wide" data-action="finish-week-setup">Finish Week Setup</button></div></section>':''}`;}
+function renderSetupGuide(){return `<button class="btn" data-action="back-guide">← Back</button><h1 class="page-title">How to Set Up Your Diary Card</h1>
+ <div class="subtle">A practical guide for choosing a small, useful card that can change as therapy changes.</div>
+ <section class="card"><div class="card-header"><div class="section-kicker">Purpose</div><div class="section-title">What the diary card is for</div></div><div class="card-body guide-copy">
+   <p>Use the card to capture the week clearly enough that you and your therapist can quickly identify important patterns and events. Targets are individualized; the examples in this app are not universal RO-DBT targets.</p>
+   <p>Keep the card manageable. A smaller set of specific targets that you actually complete is more useful than a large checklist that becomes burdensome.</p>
+ </div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">1</div><div class="section-title">Choose your therapy week</div></div><div class="card-body guide-copy"><p>Select the day your therapy week begins. RO Diary tracks seven days from that point. Changing the start day affects future weeks only; archived weeks keep their original dates.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">2</div><div class="section-title">Choose Social Signals / Overt Behaviors</div></div><div class="card-body guide-copy">
+   <p>These are concrete things another person could observe in your words, tone, face, posture, timing, or behavior. Choose signals that are relevant to your current treatment goals.</p>
+   <div class="guide-example"><strong>Examples:</strong> defensive explaining/correcting, withdrawing or shutting down, forceful tone, or appeasing to avoid conflict.</div>
+   <div class="guide-example"><strong>More useful:</strong> “Defensive explaining/correcting/rebutting”<br><strong>Less specific:</strong> “Being defensive”</div>
+ </div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">3</div><div class="section-title">Choose Private Behaviors, Emotions & Urges</div></div><div class="card-body guide-copy">
+   <p>These are internal experiences that may occur before or alongside a social signal: thoughts, emotions, body sensations, or urges. They can help you examine whether internal activation and outward behavior actually occurred together.</p>
+   <div class="guide-example"><strong>Examples:</strong> irritation, physical activation, urge to defend/explain, shame or embarrassment, urge to avoid, or urge to appease.</div>
+   <p><strong>Important distinction:</strong> “I felt irritated” is not the same as “I acted irritated.” Rate the internal experience and the outward social signal separately.</p>
+ </div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">4</div><div class="section-title">Choose how each target is rated</div></div><div class="card-body guide-copy">
+   <p><strong>0–5</strong> works well when degree, intensity, or frequency matters. <strong>Y/N</strong> works well when simple presence or absence is enough.</p>
+   <ul class="guide-list"><li>0 — not present</li><li>1 — slight / low</li><li>2 — definitely present, but low level</li><li>3 — moderate</li><li>4 — severe / intense</li><li>5 — most extreme level for you</li></ul>
+   <p><strong>Blank means unanswered.</strong> A 0 or No means you intentionally rated the target as absent.</p>
+ </div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">5</div><div class="section-title">Add the weekly Self-Enquiry focus</div></div><div class="card-body guide-copy"><p>Enter the therapist-assigned or current self-enquiry question for the week. The built-in prompt generator can help you find additional questions, but it does not replace the weekly treatment focus.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">6</div><div class="section-title">Choose weekly focus skills</div></div><div class="card-body guide-copy"><p>Select up to five skills you are actively practicing or want easy access to. You can still record any other RO skill you actually use during the week. Tap the information button beside a skill on Today for a quick reference.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">7</div><div class="section-title">Add homework and an optional valued goal</div></div><div class="card-body guide-copy"><p>Use the homework field as a reminder of the current skills-class assignment. Add a valued goal only when it is useful for the current week; it does not need to be filled in simply because the field exists.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">8</div><div class="section-title">Turn on optional RO-DBT fields only when useful</div></div><div class="card-body guide-copy">
+   <p><strong>Major OC Theme:</strong> use when you and your therapist are organizing the week around a major overcontrol/social-signaling theme.</p>
+   <p><strong>Therapy Alliance / Process Ratings:</strong> weekly 0–5 ratings completed just before therapy when these process questions are useful to your treatment.</p>
+   <p><strong>Risk / Medication / Substance Fields:</strong> daily tracking that can be enabled when clinically relevant or requested by your therapist. RO Diary is not monitored and does not notify a therapist or emergency service.</p>
+ </div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">9</div><div class="section-title">Review and finish setup</div></div><div class="card-body guide-copy"><p>At the start of a new week, RO Diary can copy the prior setup. Review what changed in therapy, adjust only what needs changing, and then finish setup. Targets should evolve when the treatment focus changes.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">Target quality</div><div class="section-title">What makes a useful target?</div></div><div class="card-body guide-copy"><ul class="guide-list">
+   <li><strong>Specific:</strong> you can tell what counts and what does not.</li>
+   <li><strong>Relevant:</strong> it connects to a current treatment problem, valued goal, or OC theme.</li>
+   <li><strong>Rateable:</strong> you can reasonably judge it at the end of the day.</li>
+   <li><strong>Manageable:</strong> the total card remains simple enough to complete consistently.</li>
+   <li><strong>Individualized:</strong> use language that matches how you and your therapist actually describe the behavior or experience.</li>
+ </ul></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">Keep it usable</div></div><div class="card-body guide-copy"><p>More fields are not automatically better. If the card becomes burdensome, confusing, or hard to complete, review the targets and optional fields with your therapist rather than simply adding more detail.</p><button class="btn primary wide" data-page="week-setup">Open Week Setup</button></div></section>`;}
+
 function renderTargetEditors(targets,kind){return targets.map(t=>`<div class="inline-edit"><div class="inline-edit-row"><input data-target-label="${t.id}" data-kind="${kind}" value="${escapeHtml(t.label)}"><select data-target-type="${t.id}" data-kind="${kind}"><option value="scale" ${t.type==='scale'?'selected':''}>0–5</option><option value="yn" ${t.type==='yn'?'selected':''}>Y/N</option></select><button class="btn danger" data-delete-target="${t.id}" data-kind="${kind}">×</button></div><textarea data-target-def="${t.id}" data-kind="${kind}" class="small">${escapeHtml(t.definition||'')}</textarea></div>`).join('');}
 
 function renderArchive(){const ids=[...appState.profile.weekIds].reverse(); return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Archive</h1><section class="card"><div class="card-body" id="archive-list">${ids.map(id=>`<div class="list-row" data-week-id="${id}"><span>Week ${escapeHtml(id.slice(0,8))}</span><button class="btn" data-action="open-archive" data-week-id="${id}">Open</button></div>`).join('')}</div></section>`;}
@@ -692,7 +785,7 @@ function renderModal(){
   return '';
 }
 
-function renderArchiveModal(w){const dates=weekDates(w); const canDelete=w.id!==appState.currentWeek.id; return `<div class="modal-backdrop"><div class="modal"><h2>${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</h2><div class="section-kicker">Private</div>${renderRatingsTable(w.privateTargets,w)}<div class="section-kicker" style="margin-top:14px">Social</div>${renderRatingsTable(w.socialTargets,w)}<div class="section-kicker" style="margin-top:14px">Discuss in Therapy</div>${dates.flatMap(d=>w.days[d].events.filter(e=>e.discuss).map(e=>`<div class="event-card"><strong>${fmtDay(d)} — ${escapeHtml(e.context)}</strong><div>${escapeHtml(e.note)}</div></div>`)).join('')||'<div class="subtle">None flagged.</div>'}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button>${canDelete?`<button class="btn danger wide" style="margin-top:8px" data-action="request-delete-week" data-week-id="${w.id}">Delete This Week…</button>`:''}</div></div>`;}
+function renderArchiveModal(w){const dates=weekDates(w); const canDelete=w.id!==appState.currentWeek.id; const optional=`${w.riskTrackingEnabled?`<div class="section-kicker" style="margin-top:14px">Risk / Medication / Substance</div><div class="table-wrap"><table><thead><tr><th>Field</th>${dates.map(d=>`<th>${fmtDay(d)}</th>`).join('')}</tr></thead><tbody>${CLINICAL_DAILY_FIELDS.map(f=>`<tr><td>${escapeHtml(f.label)}</td>${dates.map(d=>{const v=clinicalValue(w.days[d],f.id);return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`:''}${w.majorOCThemeEnabled?`<div class="section-kicker" style="margin-top:14px">Major OC Theme</div><div>${escapeHtml(w.majorOCTheme||'—')}</div>`:''}${w.therapyProcessEnabled?`<div class="section-kicker" style="margin-top:14px">Therapy Alliance / Process</div>${THERAPY_PROCESS_FIELDS.map(f=>`<div class="list-row"><span>${escapeHtml(f.label)}</span><strong>${w.therapyProcess?.[f.id]??'—'}</strong></div>`).join('')}`:''}`;return `<div class="modal-backdrop"><div class="modal"><h2>${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</h2><div class="section-kicker">Private</div>${renderRatingsTable(w.privateTargets,w)}<div class="section-kicker" style="margin-top:14px">Social</div>${renderRatingsTable(w.socialTargets,w)}${optional}<div class="section-kicker" style="margin-top:14px">Discuss in Therapy</div>${dates.flatMap(d=>w.days[d].events.filter(e=>e.discuss).map(e=>`<div class="event-card"><strong>${fmtDay(d)} — ${escapeHtml(e.context)}</strong><div>${escapeHtml(e.note)}</div></div>`)).join('')||'<div class="subtle">None flagged.</div>'}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button>${canDelete?`<button class="btn danger wide" style="margin-top:8px" data-action="request-delete-week" data-week-id="${w.id}">Delete This Week…</button>`:''}</div></div>`;}
 
 function renderPrintRatingsTable(targets,w){const dates=weekDates(w);return `<table class="report-table"><thead><tr><th>Target</th>${dates.map(d=>`<th>${fmtDay(d)}<br><span>${fmtDate(d,{month:'numeric',day:'numeric'})}</span></th>`).join('')}</tr></thead><tbody>${targets.map(t=>`<tr><td>${escapeHtml(t.label)}</td>${dates.map(d=>{const v=targetValue(w.days[d],t.id);return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table>`;}
 function renderPrintCompletion(w){const dates=weekDates(w);return `<table class="report-table completion-table"><thead><tr>${dates.map(d=>`<th>${fmtDay(d)}<br><span>${fmtDate(d,{month:'numeric',day:'numeric'})}</span></th>`).join('')}</tr></thead><tbody><tr>${dates.map(d=>`<td>${w.days[d].completed?'Complete':'Incomplete'}</td>`).join('')}</tr></tbody></table>`;}
@@ -734,9 +827,11 @@ async function handlePinDigit(d){ if(appState.busy || appState.pinBuffer.length>
 
 function bindApp(){
   $$('[data-nav]').forEach(b=>b.addEventListener('click',()=>{appState.nav=b.dataset.nav;appState.page=null;render();}));
-  $$('[data-page]').forEach(b=>b.addEventListener('click',()=>{appState.page=b.dataset.page;render(); if(appState.page==='archive') hydrateArchiveLabels();}));
+  $$('[data-page]').forEach(b=>b.addEventListener('click',()=>{const next=b.dataset.page;if(next==='setup-guide')appState.guideReturn=appState.page||null;appState.page=next;render(); if(appState.page==='archive') hydrateArchiveLabels();}));
   $('[data-action="back-page"]')?.addEventListener('click',()=>{appState.page=null;appState.nav='more';render();});
   $$('[data-target]').forEach(b=>b.addEventListener('click',()=>{const day=getSelectedEntry();let v=b.dataset.value; if(v==='true')v=true; else if(v==='false')v=false; else v=Number(v); setTargetValue(day,b.dataset.target,v);}));
+  $$('[data-clinical-target]').forEach(b=>b.addEventListener('click',()=>{const day=getSelectedEntry();let v=b.dataset.value;if(v==='true')v=true;else if(v==='false')v=false;else v=Number(v);setClinicalValue(day,b.dataset.clinicalTarget,v);}));
+  $$('[data-process-target]').forEach(b=>b.addEventListener('click',()=>setTherapyProcessValue(b.dataset.processTarget,Number(b.dataset.value))));
   $$('[data-info]').forEach(b=>b.addEventListener('click',()=>{appState.modal={type:'info',targetId:b.dataset.info};render({preserveScroll:true});}));
   $$('[data-skill-info]').forEach(b=>b.addEventListener('click',()=>{appState.modal={type:'skill-info',skillId:b.dataset.skillInfo};render({preserveScroll:true});}));
   $$('[data-skill]').forEach(c=>c.addEventListener('change',()=>toggleSkill(c.dataset.skill,c.checked)));
@@ -744,6 +839,7 @@ function bindApp(){
   $$('[data-focus-skill]').forEach(c=>c.addEventListener('change',()=>toggleFocusSkill(c.dataset.focusSkill,c.checked)));
   $$('[data-action]').forEach(b=>{ const a=b.dataset.action; if(b.__boundAction) return; b.__boundAction=true; b.addEventListener('click',()=>handleAction(a,b)); });
   $$('[data-week-field]').forEach(el=>el.addEventListener('change',()=>{appState.currentWeek[el.dataset.weekField]=el.value;queueSaveWeek();}));
+  $$('[data-week-toggle]').forEach(el=>el.addEventListener('change',()=>{appState.currentWeek[el.dataset.weekToggle]=el.checked;queueSaveWeek();render({preserveScroll:true});}));
   $$('[data-target-label]').forEach(el=>el.addEventListener('change',()=>updateTargetField(el.dataset.kind,el.dataset.targetLabel,'label',el.value)));
   $$('[data-target-def]').forEach(el=>el.addEventListener('change',()=>updateTargetField(el.dataset.kind,el.dataset.targetDef,'definition',el.value)));
   $$('[data-target-type]').forEach(el=>el.addEventListener('change',()=>updateTargetField(el.dataset.kind,el.dataset.targetType,'type',el.value)));
@@ -779,6 +875,10 @@ function buildPdfReportData(){
     dayHeaders:completion.map(x=>`${x.day} ${x.date}`),
     privateRows:ratingRows(w.privateTargets),
     socialRows:ratingRows(w.socialTargets),
+    clinicalEnabled:!!w.riskTrackingEnabled,
+    clinicalRows:w.riskTrackingEnabled?CLINICAL_DAILY_FIELDS.map(f=>[f.label,...dates.map(d=>{const v=clinicalValue(w.days[d],f.id);return v===null?'—':typeof v==='boolean'?(v?'Y':'N'):String(v);})]):[],
+    therapyProcessEnabled:!!w.therapyProcessEnabled,
+    therapyProcess:w.therapyProcessEnabled?THERAPY_PROCESS_FIELDS.map(f=>({label:f.label,value:w.therapyProcess?.[f.id]??null})):[],
     skills:usedSkills,
     events,
     weeklySEFocus:w.weeklySEFocus||'—',
@@ -786,7 +886,8 @@ function buildPdfReportData(){
     discoveredQuestions:(w.newSEQuestions||[]).map(q=>q.text),
     homework:w.homework||'—',
     valuedGoal:w.valuedGoal||'—',
-    majorOCTheme:(w.majorOCThemeEnabled && w.majorOCTheme)?w.majorOCTheme:'',
+    majorOCThemeEnabled:!!w.majorOCThemeEnabled,
+    majorOCTheme:w.majorOCThemeEnabled?(w.majorOCTheme||'—'):'',
     generated:`Generated locally by RO Diary ${APP_VERSION} • ${new Date().toLocaleString()}`
   };
 }
@@ -815,6 +916,7 @@ async function printTherapistReport(){
 }
 
 async function handleAction(a,b){
+  if(a==='back-guide'){appState.page=appState.guideReturn||null;if(!appState.page)appState.nav='more';appState.guideReturn=null;render();return;}
   if(a==='day-prev'){moveSelectedDay(-1);return;}
   if(a==='day-next'){moveSelectedDay(1);return;}
   if(a==='day-today'){if(appState.currentWeek.days[todayStr()]){appState.selectedDate=todayStr();render();}return;}
@@ -827,8 +929,8 @@ async function handleAction(a,b){
   if(a==='edit-event'){appState.modal={type:'event',eventId:b.dataset.eventId};render({preserveScroll:true});return;}
   if(a==='delete-event'){const day=getSelectedEntry();const eventId=b.dataset.eventId;if(!confirm('Delete this note/event?'))return;day.events=day.events.filter(e=>e.id!==eventId);day.modifiedAt=new Date().toISOString();queueSaveWeek();render({preserveScroll:true});return;}
   if(a==='save-event'){const ctx=$('#event-context')?.value.trim()||'';const note=$('#event-note')?.value.trim()||'';const discuss=$('#event-discuss')?.checked||false;if(!ctx&&!note){return;}const day=getSelectedEntry();const eventId=b.dataset.eventId||'';const existing=eventId?day.events.find(e=>e.id===eventId):null;if(existing){existing.context=ctx;existing.note=note;existing.discuss=discuss;existing.modifiedAt=new Date().toISOString();}else{day.events.push({id:uid(),context:ctx,note,discuss,createdAt:new Date().toISOString(),modifiedAt:new Date().toISOString()});}day.modifiedAt=new Date().toISOString();queueSaveWeek();appState.modal=null;render({preserveScroll:true});return;}
-  if(a==='complete-day'){const d=getSelectedEntry();const all=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets];const missing=all.filter(t=>targetValue(d,t.id)===null).map(t=>({id:t.id,label:t.label,type:t.type}));appState.modal={type:'complete',missing,date:d.date};render({preserveScroll:true});return;}
-  if(a==='fill-zero-complete'){const d=getSelectedEntry();for(const x of appState.modal.missing)d.ratings[x.id]=x.type==='yn'?false:0;completeDay(d);return;}
+  if(a==='complete-day'){const d=getSelectedEntry();const all=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets];const missing=all.filter(t=>targetValue(d,t.id)===null).map(t=>({id:t.id,label:t.label,type:t.type,kind:'target'}));if(appState.currentWeek.riskTrackingEnabled){for(const f of CLINICAL_DAILY_FIELDS)if(clinicalValue(d,f.id)===null)missing.push({id:f.id,label:f.label,type:f.type,kind:'clinical'});}appState.modal={type:'complete',missing,date:d.date};render({preserveScroll:true});return;}
+  if(a==='fill-zero-complete'){const d=getSelectedEntry();for(const x of appState.modal.missing){if(x.kind==='clinical'){d.clinical=d.clinical||blankClinicalDaily();d.clinical[x.id]=x.type==='yn'?false:0;}else d.ratings[x.id]=x.type==='yn'?false:0;}completeDay(d);return;}
   if(a==='confirm-complete'){completeDay(getSelectedEntry());return;}
   if(a==='another-prompt'){choosePrompt();render();return;}
   if(a==='save-prompt'){const id=appState.currentPromptId;const arr=appState.currentWeek.savedSEPrompts;appState.currentWeek.savedSEPrompts=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];queueSaveWeek();render();return;}
@@ -870,7 +972,7 @@ async function deleteArchivedWeek(id){
 async function hydrateArchiveLabels(){const rows=$$('[data-week-id]');for(const row of rows){const id=row.dataset.weekId;const w=await loadRecord(`week:${id}`);if(w){const span=row.querySelector('span');span.textContent=`${fmtDate(w.startDate)} – ${fmtDate(w.endDate)} ${w.id===appState.currentWeek.id?'(Current)':w.archived?'':'(Past)'}`;}}}
 
 async function collectPortableData(){ const profile=structuredClone(appState.profile); const weeks=[]; for(const id of profile.weekIds){const w= id===appState.currentWeek.id ? structuredClone(appState.currentWeek) : await loadRecord(`week:${id}`); if(w) weeks.push(w);} return {format:'ro-diary-data',version:1,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),profile,weeks}; }
-function validatePortableData(data){if(!data||data.format!=='ro-diary-data'||data.version!==1||!data.profile||!Array.isArray(data.weeks))throw new Error('This is not a supported RO Diary backup.');if(!data.profile.currentWeekId||!Array.isArray(data.profile.weekIds))throw new Error('Backup profile is incomplete.');for(const w of data.weeks){if(!w.id||!w.startDate||!w.endDate||!w.days||!Array.isArray(w.privateTargets)||!Array.isArray(w.socialTargets))throw new Error('A therapy week in the backup is invalid.');for(const d of Object.values(w.days)){if(!d.date||!d.ratings||!Array.isArray(d.skills)||!Array.isArray(d.events))throw new Error('A daily entry in the backup is invalid.');for(const v of Object.values(d.ratings)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A rating in the backup is invalid.');}}}return true;}
+function validatePortableData(data){if(!data||data.format!=='ro-diary-data'||data.version!==1||!data.profile||!Array.isArray(data.weeks))throw new Error('This is not a supported RO Diary backup.');if(!data.profile.currentWeekId||!Array.isArray(data.profile.weekIds))throw new Error('Backup profile is incomplete.');for(const w of data.weeks){if(!w.id||!w.startDate||!w.endDate||!w.days||!Array.isArray(w.privateTargets)||!Array.isArray(w.socialTargets))throw new Error('A therapy week in the backup is invalid.');for(const d of Object.values(w.days)){if(!d.date||!d.ratings||!Array.isArray(d.skills)||!Array.isArray(d.events))throw new Error('A daily entry in the backup is invalid.');for(const v of Object.values(d.ratings)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A rating in the backup is invalid.');}if(d.clinical){for(const v of Object.values(d.clinical)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A clinical tracking value in the backup is invalid.');}}}if(w.therapyProcess){for(const v of Object.values(w.therapyProcess)){if(v!==null && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A therapy-process rating in the backup is invalid.');}}}return true;}
 async function createBackupFromModal(){const p1=$('#backup-pass1')?.value||'';const p2=$('#backup-pass2')?.value||'';if(p1.length<10){appState.modal.error='Use at least 10 characters for the backup password.';render();return;}if(p1!==p2){appState.modal.error='Passwords do not match.';render();return;}try{appState.busy=true;const portable=await collectPortableData();const salt=randomBytes(16);const key=await deriveBackupKey(p1,salt);const e=await aesEncrypt(key,enc.encode(JSON.stringify(portable)));const envelope={format:'ro-diary-backup',version:1,kdf:{name:'PBKDF2-SHA256',iterations:BACKUP_ITERATIONS,salt:arrToB64(salt)},cipher:{name:'AES-256-GCM',iv:arrToB64(e.iv)},data:arrToB64(e.data)};const blob=new Blob([JSON.stringify(envelope)],{type:'application/octet-stream'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`RO-Diary-Backup-${todayStr()}.rodbt`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);appState.profile.lastBackupAt=new Date().toISOString();queueSaveProfile();appState.modal=null;render();}catch(e){appState.modal.error=e.message;render();}finally{appState.busy=false;}}
 let pendingRestoreEnvelope=null;
 function pickRestoreFile(){const input=document.createElement('input');input.type='file';input.accept='.rodbt,application/octet-stream,application/json';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{pendingRestoreEnvelope=JSON.parse(await file.text());if(pendingRestoreEnvelope.format!=='ro-diary-backup')throw new Error('Not an RO Diary backup.');appState.modal={type:'restore-password',error:''};render();}catch(e){alert(`Backup could not be opened: ${e.message}`);}};input.click();}
@@ -887,7 +989,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.4.0').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.1').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 

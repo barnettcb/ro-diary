@@ -93,6 +93,10 @@ function buildPdfBytes(report){
 
   const ratingWidths=[174,...Array(7).fill((CONTENT_W-174)/7)];
   const dayHeaders=['Target',...(report.dayHeaders||[])];
+  if(report.clinicalEnabled){
+    p.section('Risk, Medication & Substance');
+    p.table(dayHeaders,report.clinicalRows||[],ratingWidths,{fontSize:7.8,headerFontSize:7.4});
+  }
   p.section('Private Behaviors, Emotions & Urges');
   p.table(dayHeaders,report.privateRows||[],ratingWidths,{fontSize:7.8,headerFontSize:7.4});
   p.section('Social Signals & Overt Behaviors');
@@ -129,10 +133,14 @@ function buildPdfBytes(report){
     for(const q of report.discoveredQuestions)p.text(`- ${q}`,{x:M+10,size:9,maxWidth:CONTENT_W-10,lineHeight:12,gap:2});
   }
 
+  if(report.therapyProcessEnabled){
+    p.section('Therapy Alliance & Process');
+    for(const item of report.therapyProcess||[])p.text(`${item.label}: ${item.value===null||item.value===undefined?'-':item.value}`,{size:9.2,maxWidth:CONTENT_W,lineHeight:12,gap:3});
+  }
   p.section('Week Context');
   p.text(`Homework: ${report.homework||'-'}`,{size:9.2,maxWidth:CONTENT_W,lineHeight:12,gap:4});
   p.text(`Valued Goal: ${report.valuedGoal||'-'}`,{size:9.2,maxWidth:CONTENT_W,lineHeight:12,gap:4});
-  if(report.majorOCTheme)p.text(`Major OC Theme: ${report.majorOCTheme}`,{size:9.2,maxWidth:CONTENT_W,lineHeight:12,gap:4});
+  if(report.majorOCThemeEnabled)p.text(`Major OC Theme: ${report.majorOCTheme||'-'}`,{size:9.2,maxWidth:CONTENT_W,lineHeight:12,gap:4});
 
   p.ensure(24); p.y-=7; p.add(lineCmd(M,p.y,PAGE_W-M,p.y,.5)); p.y-=13; p.text(report.generated||'',{size:7,maxWidth:CONTENT_W,lineHeight:9});
 

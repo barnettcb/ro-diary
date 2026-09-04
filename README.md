@@ -1,17 +1,17 @@
-# RO Diary Beta 0.4.0
+# RO Diary Beta 0.5.1
 
 Private, local-first RO-DBT diary card beta.
 
-## Changes in 0.4.0
-- Added safe deletion of archived therapy weeks. The current week cannot be deleted.
-- Expanded Self-Enquiry to 120 original RO-DBT-informed prompts across topic categories.
-- Added topic filtering and recent-repeat avoidance for generated prompts.
-- Added optional "Question I Discovered" entries for the current therapy week.
-- Expanded saved/favorite/personal question handling.
-- Expanded the RO Skills Reference with purpose, when-to-use guidance, quick guides, and manual references.
-- Added skill information buttons directly on the Today screen and in Other RO Skill.
+## Changes in 0.5.1
+- Rolls forward all 0.5.0 optional modules: Major OC Theme, Therapy Alliance / Process Ratings, and Risk / Medication / Substance Fields.
+- Added an in-app **How to Set Up Your Diary Card** guide.
+- The guide explains therapy-week setup, social-signal and private targets, 0–5 versus Y/N scoring, self-enquiry focus, weekly skills, homework/valued goals, and the optional RO-DBT modules.
+- Added practical guidance on making targets specific, relevant, rateable, manageable, and individualized.
+- Added a **Setup Guide** button directly in Week Setup and a permanent link under More.
+- The guide is informational only and encourages reviewing treatment targets with the therapist as treatment changes.
 
 ## Important
 - This update keeps the existing encrypted vault and diary data. Do not delete/reinstall the Home Screen app for this update.
-- Create a current encrypted backup before updating or deleting an archived week.
-- Skills content is a concise reference based on RO-DBT source materials; it does not replace the official handouts, worksheets, skills class, or individual therapy.
+- Create a current encrypted backup before updating.
+- RO Diary is not monitored and does not alert a therapist or emergency service.
+- Optional clinical/process fields remain off unless deliberately enabled in Week Setup.
