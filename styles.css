@@ -29,6 +29,10 @@ button:disabled { opacity: .55; cursor: default; }
 .status-pill { font-size: 12px; padding: 5px 9px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
 .content { width: min(760px, 100%); margin: 0 auto; padding: 14px 14px 28px; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
 .page-title { font-size: 26px; line-height: 1.15; margin: 8px 0 4px; letter-spacing:-.02em; }
+
+.day-nav { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:4px 0 10px; }
+.day-nav-btn { min-width:0; padding-left:8px; padding-right:8px; }
+.history-notice { margin-top:10px; }
 .subtle { color: var(--muted); font-size: 14px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); margin: 12px 0; overflow: hidden; }
 .card-header { padding: 15px 15px 11px; border-bottom: 1px solid var(--line); }

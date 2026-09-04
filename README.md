@@ -1,11 +1,14 @@
-# RO Diary Beta 0.2.5
+# RO Diary Beta 0.3.0
 
 Private, local-first RO-DBT diary card beta.
 
-## Changes in 0.2.5
-- Skill-used selections update in place without redrawing the Today screen.
-- Therapist PDF share now sends only the named PDF file, avoiding the extra text attachment seen on iPhone.
-- Keeps the unique therapist PDF filename with date and time.
+## Changes in 0.3.0
+- Info and Note/Event popups no longer move the Today screen back to the top.
+- Added Previous / Today / Next controls so entries from earlier days in the current therapy week can be reviewed and edited.
+- Editing a completed earlier day marks it incomplete until it is completed again.
+- New therapy weeks now prompt for Week Setup instead of silently carrying forward the prior week's setup.
+- Improved therapist PDF readability with larger type, more spacing, and a separate details page so longer information can wrap without being cut off.
 
 ## Important
-This is still a beta. Keep current encrypted backups while testing.
+- This update keeps the existing encrypted vault and diary data. Do not delete/reinstall the Home Screen app for this update.
+- Keep current encrypted backups while testing.

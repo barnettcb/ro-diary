@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.2.5-beta';
+const APP_VERSION = '0.3.0-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 1;
@@ -138,6 +138,7 @@ let appState = {
   page: null,
   profile: null,
   currentWeek: null,
+  selectedDate: null,
   modal: null,
   currentPromptId: null,
   hiddenAt: null,
@@ -268,8 +269,8 @@ async function unlockVault(pin) {
 
 function buildNewWeek(startDate, previous=null) {
   const start=typeof startDate==='string'?parseDateOnly(startDate):startDate; const end=addDays(start,6);
-  const id=uid(); const days={};
-  for(let i=0;i<7;i++){ const ds=toDateOnly(addDays(start,i)); days[ds]={date:ds,ratings:{},skills:[],events:[],completed:false,completedAt:null,modifiedAt:new Date().toISOString()}; }
+  const id=uid(); const days={}; const now=new Date().toISOString();
+  for(let i=0;i<7;i++){ const ds=toDateOnly(addDays(start,i)); days[ds]={date:ds,ratings:{},skills:[],events:[],completed:false,completedAt:null,modifiedAt:now}; }
   return {
     id,startDate:toDateOnly(start),endDate:toDateOnly(end),
     privateTargets:structuredClone(previous?.privateTargets || DEFAULT_PRIVATE_TARGETS),
@@ -278,34 +279,49 @@ function buildNewWeek(startDate, previous=null) {
     weeklySEFocus:previous?.weeklySEFocus || DEFAULT_SE_FOCUS,
     homework:previous?.homework || DEFAULT_HOMEWORK,
     valuedGoal:previous?.valuedGoal || '', majorOCTheme:'', majorOCThemeEnabled:false,
-    savedSEPrompts:[], days, archived:false, createdAt:new Date().toISOString(),modifiedAt:new Date().toISOString()
+    savedSEPrompts:[], days, archived:false,
+    setupStatus:previous?'pending':'confirmed', setupConfirmedAt:previous?null:now,
+    createdAt:now,modifiedAt:now
   };
 }
 
 async function initializeFreshData() {
   const start=getWeekStart(new Date(),WEEK_START_DAY); const week=buildNewWeek(start);
   const profile={
-    version:1,therapyWeekStart:WEEK_START_DAY,currentWeekId:week.id,weekIds:[week.id],
+    version:2,therapyWeekStart:WEEK_START_DAY,currentWeekId:week.id,weekIds:[week.id],
     pdfName:'Brooke',lastBackupAt:null,createdAt:new Date().toISOString(),modifiedAt:new Date().toISOString(),
     favoritePromptIds:[],notUsefulPromptIds:[],myQuestions:[]
   };
   await saveRecord('profile',profile); await saveRecord(`week:${week.id}`,week);
-  appState.profile=profile; appState.currentWeek=week;
+  appState.profile=profile; appState.currentWeek=week; appState.selectedDate=todayStr();
 }
 
 async function loadAppData() {
   const profile=await loadRecord('profile'); if(!profile) throw new Error('Profile could not be loaded.');
   appState.profile=profile;
   let week=await loadRecord(`week:${profile.currentWeekId}`);
-  const today=new Date(); const expectedStart=getWeekStart(today,profile.therapyWeekStart ?? WEEK_START_DAY);
-  if(!week || parseDateOnly(week.endDate) < parseDateOnly(todayStr())) {
+  const today=new Date(); const todayKey=todayStr(); const expectedStart=getWeekStart(today,profile.therapyWeekStart ?? WEEK_START_DAY);
+  let saveProfileNeeded=false; let saveWeekNeeded=false;
+  if(!week || parseDateOnly(week.endDate) < parseDateOnly(todayKey)) {
     const prev=week || (profile.weekIds.length ? await loadRecord(`week:${profile.weekIds[profile.weekIds.length-1]}`) : null);
     if(prev) { prev.archived=true; prev.modifiedAt=new Date().toISOString(); await saveRecord(`week:${prev.id}`,prev); }
     week=buildNewWeek(expectedStart,prev);
     profile.currentWeekId=week.id; profile.weekIds.push(week.id); profile.modifiedAt=new Date().toISOString();
-    await saveRecord(`week:${week.id}`,week); await saveRecord('profile',profile);
+    await saveRecord(`week:${week.id}`,week); saveProfileNeeded=true;
   }
+  // One-time upgrade: prompt to review the current week's copied setup without changing any diary data.
+  if((profile.version||1)<2){
+    profile.version=2; saveProfileNeeded=true;
+    if(!week.setupStatus){week.setupStatus='pending';week.setupConfirmedAt=null;saveWeekNeeded=true;}
+  } else if(!week.setupStatus){
+    week.setupStatus='confirmed';week.setupConfirmedAt=week.createdAt||new Date().toISOString();saveWeekNeeded=true;
+  }
+  if(saveWeekNeeded) await saveRecord(`week:${week.id}`,week);
+  if(saveProfileNeeded) await saveRecord('profile',profile);
   appState.currentWeek=week;
+  const eligible=Object.keys(week.days).sort().filter(d=>parseDateOnly(d)<=parseDateOnly(todayKey));
+  appState.selectedDate=week.days[todayKey]?todayKey:(eligible.at(-1)||Object.keys(week.days).sort()[0]);
+  if(week.setupStatus==='pending') appState.modal={type:'week-start'};
 }
 
 function queueSaveWeek() {
@@ -318,18 +334,38 @@ function queueSaveProfile() {
 }
 
 function lockApp() {
-  vaultKey=null; appState.locked=true; appState.pinBuffer=''; appState.pinError=''; appState.profile=null; appState.currentWeek=null; appState.modal=null; render();
+  vaultKey=null; appState.locked=true; appState.pinBuffer=''; appState.pinError=''; appState.profile=null; appState.currentWeek=null; appState.selectedDate=null; appState.modal=null; render();
 }
 
-function getTodayEntry() {
+function selectableDates(w=appState.currentWeek){
+  if(!w) return [];
+  const today=parseDateOnly(todayStr());
+  return Object.keys(w.days).sort().filter(d=>parseDateOnly(d)<=today);
+}
+function selectedDateStr(){
+  const w=appState.currentWeek; if(!w) return todayStr();
+  const dates=selectableDates(w); const fallback=w.days[todayStr()]?todayStr():(dates.at(-1)||Object.keys(w.days).sort()[0]);
+  if(!appState.selectedDate || !w.days[appState.selectedDate] || parseDateOnly(appState.selectedDate)>parseDateOnly(todayStr())) appState.selectedDate=fallback;
+  return appState.selectedDate;
+}
+function getSelectedEntry() {
   const w=appState.currentWeek; if(!w) return null;
-  const ds=todayStr();
-  if(!w.days[ds]) {
-    const latest=Object.keys(w.days).sort().at(-1); return w.days[latest];
-  }
-  return w.days[ds];
+  return w.days[selectedDateStr()] || null;
+}
+function moveSelectedDay(delta){
+  const dates=selectableDates(); if(!dates.length) return;
+  const current=selectedDateStr(); const i=Math.max(0,dates.indexOf(current)); const next=Math.min(dates.length-1,Math.max(0,i+delta));
+  appState.selectedDate=dates[next]; render();
 }
 function targetValue(day,id){ return Object.prototype.hasOwnProperty.call(day.ratings,id) ? day.ratings[id] : null; }
+function updateCompletionUi(day){
+  const state=$('#completion-state');
+  if(state) state.innerHTML=day.completed?`<div class="notice success-notice">Completed ${new Date(day.completedAt).toLocaleString()}</div>`:'';
+  const btn=$('#complete-day-btn');
+  if(btn) btn.textContent=day.completed?'Review Completion':(day.date===todayStr()?'Complete Today':`Complete ${fmtDay(day.date)}`);
+  const pill=$('.topbar .status-pill');
+  if(pill && appState.nav==='today' && !appState.page) pill.textContent=day.completed?`${day.date===todayStr()?'Today':fmtDay(day.date)} complete`:'Private • Local';
+}
 function setTargetValue(day,id,val){
   day.ratings[id]=val;
   day.modifiedAt=new Date().toISOString();
@@ -341,8 +377,7 @@ function setTargetValue(day,id,val){
     if(btnVal==='true') btnVal=true; else if(btnVal==='false') btnVal=false; else btnVal=Number(btnVal);
     btn.classList.toggle('selected', btnVal===val);
   });
-  const pill=$('.topbar .status-pill');
-  if(pill && appState.nav==='today' && !appState.page) pill.textContent='Private • Local';
+  updateCompletionUi(day);
 }
 function skillName(id){ return SKILLS.find(s=>s.id===id)?.name || id; }
 function promptById(id){ return SE_PROMPTS.find(p=>p.id===id); }
@@ -379,7 +414,7 @@ function renderLock() {
 }
 
 function renderAppShell() {
-  const w=appState.currentWeek; const day=getTodayEntry();
+  const w=appState.currentWeek; const day=getSelectedEntry();
   const nav=appState.nav;
   let body='';
   if(appState.page==='week-setup') body=renderWeekSetup();
@@ -392,7 +427,7 @@ function renderAppShell() {
   else body=renderMore();
   const title=appState.page ? ({'week-setup':'Week Setup','archive':'Archive','skills':'RO Skills','settings':'Settings'}[appState.page]) : 'RO Diary';
   return `<div class="app-shell">
-    <header class="topbar"><div class="topbar-row"><div class="brand">${title}</div><div class="status-pill">${day?.completed?'Today complete':'Private • Local'}</div></div></header>
+    <header class="topbar"><div class="topbar-row"><div class="brand">${title}</div><div class="status-pill">${day?.completed?`${day.date===todayStr()?'Today':fmtDay(day.date)} complete`:'Private • Local'}</div></div></header>
     <main class="content">${body}${appState.saveError?`<div class="notice">Save problem: ${escapeHtml(appState.saveError)}</div>`:''}</main>
     ${appState.page?'':renderNav(nav)}
   </div>`;
@@ -417,10 +452,16 @@ function renderTarget(t,day){ const val=targetValue(day,t.id);
   </div></div>`;
 }
 
+function renderDayNavigator(w,day){
+  const dates=selectableDates(w); const idx=dates.indexOf(day.date); const todayAvailable=!!w.days[todayStr()];
+  return `<div class="day-nav"><button class="btn day-nav-btn" data-action="day-prev" ${idx<=0?'disabled':''}>‹ Previous</button><button class="btn day-nav-btn" data-action="day-today" ${!todayAvailable?'disabled':''}>Today</button><button class="btn day-nav-btn" data-action="day-next" ${idx<0||idx>=dates.length-1?'disabled':''}>Next ›</button></div>`;
+}
+
 function renderToday(day) {
   const w=appState.currentWeek; if(!day) return '<div class="notice">No daily entry is available.</div>';
   const focusSkills=w.focusSkills.map(id=>SKILLS.find(s=>s.id===id)).filter(Boolean);
-  return `<h1 class="page-title">${escapeHtml(fmtLong(day.date))}</h1><div class="subtle">Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
+  return `${renderDayNavigator(w,day)}<h1 class="page-title">${escapeHtml(fmtLong(day.date))}</h1><div class="subtle">Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
+    ${day.date!==todayStr()?'<div class="notice history-notice">Viewing an earlier day. If you change a completed entry, it will become incomplete until you complete it again.</div>':''}
     ${renderTargetSection('What I noticed internally','Private Behaviors, Emotions & Urges',w.privateTargets,day)}
     ${renderTargetSection('What I signaled or did','Social Signals & Overt Behaviors',w.socialTargets,day)}
     <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body"><div class="checkbox-list">
@@ -430,7 +471,7 @@ function renderToday(day) {
     <section class="card"><div class="card-header"><div class="section-kicker">Notes / Events</div></div><div class="card-body">
       ${day.events.length?day.events.map(e=>renderEvent(e)).join(''):'<div class="subtle">No events recorded today.</div>'}
       <button class="btn soft wide" style="margin-top:10px" data-action="add-event">+ Add Note / Event</button></div></section>
-    <section class="card"><div class="card-body">${day.completed?`<div class="notice success-notice">Completed ${new Date(day.completedAt).toLocaleString()}</div>`:''}<button class="btn primary wide" data-action="complete-day">${day.completed?'Review Completion':'Complete Today'}</button></div></section>`;
+    <section class="card"><div class="card-body"><div id="completion-state">${day.completed?`<div class="notice success-notice">Completed ${new Date(day.completedAt).toLocaleString()}</div>`:''}</div><button id="complete-day-btn" class="btn primary wide" data-action="complete-day">${day.completed?'Review Completion':(day.date===todayStr()?'Complete Today':`Complete ${fmtDay(day.date)}`)}</button></div></section>`;
 }
 function renderEvent(e){return `<div class="event-card"><div class="event-context">${escapeHtml(e.context||'Event')}</div><div class="event-note">${escapeHtml(e.note||'')}</div>${e.discuss?'<div class="flag">★ Discuss in Therapy</div>':''}<div class="event-actions"><button class="btn" data-action="edit-event" data-event-id="${e.id}">Edit</button><button class="btn danger" data-action="delete-event" data-event-id="${e.id}">Delete</button></div></div>`;}
 
@@ -468,10 +509,12 @@ function renderMore(){ const p=appState.profile; return `<h1 class="page-title">
  </div></section><section class="card"><div class="card-body"><div class="list-row"><strong>Last encrypted backup</strong><span class="small">${p.lastBackupAt?new Date(p.lastBackupAt).toLocaleString():'None yet'}</span></div><button class="btn primary wide" style="margin-top:10px" data-action="backup">Create Encrypted Backup</button><button class="btn wide" style="margin-top:8px" data-action="restore">Restore Backup</button></div></section><div class="subtle">RO Diary ${APP_VERSION}. Data stays on this device unless you deliberately export it.</div>`;}
 
 function renderWeekSetup(){const w=appState.currentWeek; return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Week Setup</h1><div class="subtle">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
+ ${w.setupStatus==='pending'?'<div class="notice">This new week copied the prior week&apos;s setup. Review anything that changed in therapy, then finish setup.</div>':''}
  <section class="card"><div class="card-header"><div class="section-kicker">Private targets</div></div><div class="card-body">${renderTargetEditors(w.privateTargets,'private')}<button class="btn soft wide" data-action="add-target" data-kind="private">+ Add Private Target</button></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Social signals</div></div><div class="card-body">${renderTargetEditors(w.socialTargets,'social')}<button class="btn soft wide" data-action="add-target" data-kind="social">+ Add Social Target</button></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Weekly focus skills</div></div><div class="card-body"><div class="checkbox-list">${SKILLS.map(s=>`<label class="check-row"><input type="checkbox" data-focus-skill="${s.id}" ${w.focusSkills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><div class="subtle" style="margin-top:8px">Choose up to five focus skills. Other skills remain available on the daily card.</div></div></section>
- <section class="card"><div class="card-body"><div class="field"><label>Weekly self-enquiry focus</label><textarea data-week-field="weeklySEFocus">${escapeHtml(w.weeklySEFocus)}</textarea></div><div class="field"><label>Skills-class homework</label><input data-week-field="homework" value="${escapeHtml(w.homework)}"></div><div class="field"><label>Valued goal (optional)</label><input data-week-field="valuedGoal" value="${escapeHtml(w.valuedGoal)}"></div></div></section>`;}
+ <section class="card"><div class="card-body"><div class="field"><label>Weekly self-enquiry focus</label><textarea data-week-field="weeklySEFocus">${escapeHtml(w.weeklySEFocus)}</textarea></div><div class="field"><label>Skills-class homework</label><input data-week-field="homework" value="${escapeHtml(w.homework)}"></div><div class="field"><label>Valued goal (optional)</label><input data-week-field="valuedGoal" value="${escapeHtml(w.valuedGoal)}"></div></div></section>
+ ${w.setupStatus==='pending'?'<section class="card"><div class="card-body"><button class="btn primary wide" data-action="finish-week-setup">Finish Week Setup</button></div></section>':''}`;}
 function renderTargetEditors(targets,kind){return targets.map(t=>`<div class="inline-edit"><div class="inline-edit-row"><input data-target-label="${t.id}" data-kind="${kind}" value="${escapeHtml(t.label)}"><select data-target-type="${t.id}" data-kind="${kind}"><option value="scale" ${t.type==='scale'?'selected':''}>0–5</option><option value="yn" ${t.type==='yn'?'selected':''}>Y/N</option></select><button class="btn danger" data-delete-target="${t.id}" data-kind="${kind}">×</button></div><textarea data-target-def="${t.id}" data-kind="${kind}" class="small">${escapeHtml(t.definition||'')}</textarea></div>`).join('');}
 
 function renderArchive(){const ids=[...appState.profile.weekIds].reverse(); return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Archive</h1><section class="card"><div class="card-body" id="archive-list">${ids.map(id=>`<div class="list-row" data-week-id="${id}"><span>Week ${escapeHtml(id.slice(0,8))}</span><button class="btn" data-action="open-archive" data-week-id="${id}">Open</button></div>`).join('')}</div></section>`;}
@@ -481,12 +524,13 @@ function renderSkillsReference(){return `<button class="btn" data-action="back-p
 function renderSettings(){return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Settings</h1><section class="card"><div class="card-body"><div class="field"><label>Therapy week starts</label><select id="week-start">${[[0,'Sunday'],[1,'Monday'],[2,'Tuesday'],[3,'Wednesday'],[4,'Thursday'],[5,'Friday'],[6,'Saturday']].map(([v,n])=>`<option value="${v}" ${appState.profile.therapyWeekStart===v?'selected':''}>${n}</option>`).join('')}</select><div class="subtle small">Changing this affects future weeks only.</div></div><div class="field"><label>PDF name</label><input id="pdf-name" value="${escapeHtml(appState.profile.pdfName||'')}"></div><button class="btn" data-action="change-pin">Change 4-Digit Passcode</button><button class="btn wide" style="margin-top:8px" data-action="lock-now">Lock Now</button></div></section>`;}
 
 function renderModal(){ const m=appState.modal; if(!m) return '';
+  if(m.type==='week-start'){const w=appState.currentWeek;return `<div class="modal-backdrop"><div class="modal"><h2>Set Up New Week</h2><div class="subtle">Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div><p>Last week's targets, focus skills, self-enquiry question, and homework were copied forward.</p><div class="btn-row"><button class="btn primary" data-action="review-week-setup">Review & Update</button><button class="btn" data-action="keep-week-setup">Use Previous Setup</button></div></div></div>`;}
   if(m.type==='info'){ const t=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets].find(x=>x.id===m.targetId); if(!t) return ''; return `<div class="modal-backdrop"><div class="modal"><h2>${escapeHtml(t.label)}</h2><p>${escapeHtml(t.definition||'No definition entered.')}</p>${t.type==='scale'?`<div>${SCALE_ANCHORS.map(a=>`<div class="list-row"><span>${escapeHtml(a)}</span></div>`).join('')}</div>`:'<div class="subtle">Answer Yes or No. Unanswered remains blank.</div>'}<button class="btn primary wide" data-action="close-modal">Close</button></div></div>`; }
-  if(m.type==='event'){ const existing=m.eventId?getTodayEntry().events.find(e=>e.id===m.eventId):null; return `<div class="modal-backdrop"><div class="modal"><h2>${existing?'Edit Event':'Add Event'}</h2><div class="field"><label>Context</label><input id="event-context" placeholder="Conversation after work" value="${escapeHtml(existing?.context||'')}"></div><div class="field"><label>Brief Note</label><textarea id="event-note" placeholder="Enough context to remember what happened later.">${escapeHtml(existing?.note||'')}</textarea></div><label class="check-row"><input type="checkbox" id="event-discuss" ${existing?.discuss?'checked':''}><span>Discuss in Therapy</span></label><div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="save-event" data-event-id="${existing?.id||''}">${existing?'Save Changes':'Save Event'}</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;}
-  if(m.type==='other-skill') return `<div class="modal-backdrop"><div class="modal"><h2>Other RO Skill</h2><div class="checkbox-list">${SKILLS.filter(s=>!appState.currentWeek.focusSkills.includes(s.id)).map(s=>`<label class="check-row"><input type="checkbox" data-other-skill="${s.id}" ${getTodayEntry().skills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Done</button></div></div>`;
+  if(m.type==='event'){ const existing=m.eventId?getSelectedEntry().events.find(e=>e.id===m.eventId):null; return `<div class="modal-backdrop"><div class="modal"><h2>${existing?'Edit Event':'Add Event'}</h2><div class="field"><label>Context</label><input id="event-context" placeholder="Conversation after work" value="${escapeHtml(existing?.context||'')}"></div><div class="field"><label>Brief Note</label><textarea id="event-note" placeholder="Enough context to remember what happened later.">${escapeHtml(existing?.note||'')}</textarea></div><label class="check-row"><input type="checkbox" id="event-discuss" ${existing?.discuss?'checked':''}><span>Discuss in Therapy</span></label><div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="save-event" data-event-id="${existing?.id||''}">${existing?'Save Changes':'Save Event'}</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;}
+  if(m.type==='other-skill') return `<div class="modal-backdrop"><div class="modal"><h2>Other RO Skill</h2><div class="checkbox-list">${SKILLS.filter(s=>!appState.currentWeek.focusSkills.includes(s.id)).map(s=>`<label class="check-row"><input type="checkbox" data-other-skill="${s.id}" ${getSelectedEntry().skills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Done</button></div></div>`;
   if(m.type==='saved-questions'){ const w=appState.currentWeek; const saved=w.savedSEPrompts.map(promptById).filter(Boolean); const fav=appState.profile.favoritePromptIds.map(promptById).filter(Boolean); return `<div class="modal-backdrop"><div class="modal"><h2>Saved Questions</h2><div class="section-kicker">This Week</div>${saved.length?saved.map(p=>`<div class="event-card">${escapeHtml(p.text)}</div>`).join(''):'<div class="subtle">None saved this week.</div>'}<div class="section-kicker" style="margin-top:16px">Favorites</div>${fav.length?fav.map(p=>`<div class="event-card">${escapeHtml(p.text)}</div>`).join(''):'<div class="subtle">No favorites yet.</div>'}<div class="section-kicker" style="margin-top:16px">My Questions</div>${appState.profile.myQuestions.length?appState.profile.myQuestions.map(q=>`<div class="event-card">${escapeHtml(q.text)}</div>`).join(''):'<div class="subtle">No personal questions yet.</div>'}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button></div></div>`;}
   if(m.type==='my-question') return `<div class="modal-backdrop"><div class="modal"><h2>Add My Question</h2><div class="field"><label>Question</label><textarea id="my-question-text"></textarea></div><div class="btn-row"><button class="btn primary" data-action="save-my-question">Save</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
-  if(m.type==='complete'){return `<div class="modal-backdrop"><div class="modal"><h2>Complete Today</h2>${m.missing.length?`<div class="notice">${m.missing.length} target${m.missing.length===1?' is':'s are'} unanswered.</div>${m.missing.map(x=>`<div class="list-row"><span>${escapeHtml(x.label)}</span></div>`).join('')}<div class="btn-row" style="margin-top:12px"><button class="btn" data-action="close-modal">Go Back</button><button class="btn primary" data-action="fill-zero-complete">Set to 0 / No and Complete</button></div>`:`<div class="subtle">All targets are answered.</div><button class="btn primary wide" style="margin-top:12px" data-action="confirm-complete">Mark Today Complete</button>`}</div></div>`;}
+  if(m.type==='complete'){return `<div class="modal-backdrop"><div class="modal"><h2>${m.date===todayStr()?'Complete Today':`Complete ${fmtLong(m.date)}`}</h2>${m.missing.length?`<div class="notice">${m.missing.length} target${m.missing.length===1?' is':'s are'} unanswered.</div>${m.missing.map(x=>`<div class="list-row"><span>${escapeHtml(x.label)}</span></div>`).join('')}<div class="btn-row" style="margin-top:12px"><button class="btn" data-action="close-modal">Go Back</button><button class="btn primary" data-action="fill-zero-complete">Set to 0 / No and Complete</button></div>`:`<div class="subtle">All targets are answered.</div><button class="btn primary wide" style="margin-top:12px" data-action="confirm-complete">Mark Today Complete</button>`}</div></div>`;}
   if(m.type==='backup-password') return `<div class="modal-backdrop"><div class="modal"><h2>Create Encrypted Backup</h2><div class="field"><label>Backup password</label><input type="password" id="backup-pass1" autocomplete="new-password"></div><div class="field"><label>Confirm password</label><input type="password" id="backup-pass2" autocomplete="new-password"></div><div class="subtle">Use a strong password you can recover later. The app does not store it.</div>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="do-backup">Create Backup</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
   if(m.type==='restore-password') return `<div class="modal-backdrop"><div class="modal"><h2>Restore Backup</h2><div class="field"><label>Backup password</label><input type="password" id="restore-pass"></div><div class="notice">Restore replaces the current vault after the backup is decrypted and validated.</div>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row"><button class="btn primary" data-action="do-restore">Validate & Restore</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
   if(m.type==='change-pin') return `<div class="modal-backdrop"><div class="modal"><h2>Change Passcode</h2><div class="field"><label>Current 4-digit passcode</label><input type="password" inputmode="numeric" maxlength="4" id="old-pin"></div><div class="field"><label>New 4-digit passcode</label><input type="password" inputmode="numeric" maxlength="4" id="new-pin1"></div><div class="field"><label>Confirm new passcode</label><input type="password" inputmode="numeric" maxlength="4" id="new-pin2"></div>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row"><button class="btn primary" data-action="do-change-pin">Change</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
@@ -538,8 +582,8 @@ function bindApp(){
   $$('[data-nav]').forEach(b=>b.addEventListener('click',()=>{appState.nav=b.dataset.nav;appState.page=null;render();}));
   $$('[data-page]').forEach(b=>b.addEventListener('click',()=>{appState.page=b.dataset.page;render(); if(appState.page==='archive') hydrateArchiveLabels();}));
   $('[data-action="back-page"]')?.addEventListener('click',()=>{appState.page=null;appState.nav='more';render();});
-  $$('[data-target]').forEach(b=>b.addEventListener('click',()=>{const day=getTodayEntry();let v=b.dataset.value; if(v==='true')v=true; else if(v==='false')v=false; else v=Number(v); setTargetValue(day,b.dataset.target,v);}));
-  $$('[data-info]').forEach(b=>b.addEventListener('click',()=>{appState.modal={type:'info',targetId:b.dataset.info};render();}));
+  $$('[data-target]').forEach(b=>b.addEventListener('click',()=>{const day=getSelectedEntry();let v=b.dataset.value; if(v==='true')v=true; else if(v==='false')v=false; else v=Number(v); setTargetValue(day,b.dataset.target,v);}));
+  $$('[data-info]').forEach(b=>b.addEventListener('click',()=>{appState.modal={type:'info',targetId:b.dataset.info};render({preserveScroll:true});}));
   $$('[data-skill]').forEach(c=>c.addEventListener('change',()=>toggleSkill(c.dataset.skill,c.checked)));
   $$('[data-other-skill]').forEach(c=>c.addEventListener('change',()=>toggleSkill(c.dataset.otherSkill,c.checked,false)));
   $$('[data-focus-skill]').forEach(c=>c.addEventListener('change',()=>toggleFocusSkill(c.dataset.focusSkill,c.checked)));
@@ -552,7 +596,7 @@ function bindApp(){
   $('#pdf-name')?.addEventListener('change',e=>{appState.profile.pdfName=e.target.value;queueSaveProfile();});
   $('#week-start')?.addEventListener('change',e=>{appState.profile.therapyWeekStart=Number(e.target.value);queueSaveProfile();});
 }
-function toggleSkill(id,checked,doRender=true){const d=getTodayEntry(); if(checked&&!d.skills.includes(id))d.skills.push(id); if(!checked)d.skills=d.skills.filter(x=>x!==id); d.modifiedAt=new Date().toISOString(); if(d.completed){d.completed=false;d.completedAt=null;} queueSaveWeek(); if(doRender){const pill=$('.topbar .status-pill');if(pill && appState.nav==='today' && !appState.page)pill.textContent='Private • Local';}}
+function toggleSkill(id,checked,doRender=true){const d=getSelectedEntry(); if(checked&&!d.skills.includes(id))d.skills.push(id); if(!checked)d.skills=d.skills.filter(x=>x!==id); d.modifiedAt=new Date().toISOString(); if(d.completed){d.completed=false;d.completedAt=null;} queueSaveWeek(); if(doRender)updateCompletionUi(d);}
 function toggleFocusSkill(id,checked){const w=appState.currentWeek;if(checked){if(w.focusSkills.length>=5){alert('Choose up to five focus skills.');render();return;} if(!w.focusSkills.includes(id))w.focusSkills.push(id);}else w.focusSkills=w.focusSkills.filter(x=>x!==id);queueSaveWeek();render();}
 function updateTargetField(kind,id,field,val){const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;const t=arr.find(x=>x.id===id);if(t){t[field]=val;queueSaveWeek();}}
 function deleteTarget(kind,id){const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;if(!confirm('Remove this target from the current week?'))return;const next=arr.filter(x=>x.id!==id);if(kind==='private')appState.currentWeek.privateTargets=next;else appState.currentWeek.socialTargets=next;queueSaveWeek();render();}
@@ -614,35 +658,40 @@ async function printTherapistReport(){
 }
 
 async function handleAction(a,b){
-  if(a==='close-modal'){appState.modal=null;render();return;}
-  if(a==='other-skill'){appState.modal={type:'other-skill'};render();return;}
+  if(a==='day-prev'){moveSelectedDay(-1);return;}
+  if(a==='day-next'){moveSelectedDay(1);return;}
+  if(a==='day-today'){if(appState.currentWeek.days[todayStr()]){appState.selectedDate=todayStr();render();}return;}
+  if(a==='review-week-setup'){appState.modal=null;appState.page='week-setup';appState.nav='more';render();return;}
+  if(a==='keep-week-setup'||a==='finish-week-setup'){const w=appState.currentWeek;w.setupStatus='confirmed';w.setupConfirmedAt=new Date().toISOString();queueSaveWeek();appState.modal=null;if(a==='finish-week-setup'){appState.page=null;appState.nav='today';}render();return;}
+  if(a==='close-modal'){appState.modal=null;render({preserveScroll:true});return;}
+  if(a==='other-skill'){appState.modal={type:'other-skill'};render({preserveScroll:true});return;}
   if(a==='go-se'){appState.nav='se';appState.page=null;render();return;}
-  if(a==='add-event'){appState.modal={type:'event'};render();return;}
-  if(a==='edit-event'){appState.modal={type:'event',eventId:b.dataset.eventId};render();return;}
-  if(a==='delete-event'){const day=getTodayEntry();const eventId=b.dataset.eventId;if(!confirm('Delete this note/event?'))return;day.events=day.events.filter(e=>e.id!==eventId);day.modifiedAt=new Date().toISOString();queueSaveWeek();render();return;}
-  if(a==='save-event'){const ctx=$('#event-context')?.value.trim()||'';const note=$('#event-note')?.value.trim()||'';const discuss=$('#event-discuss')?.checked||false;if(!ctx&&!note){return;}const day=getTodayEntry();const eventId=b.dataset.eventId||'';const existing=eventId?day.events.find(e=>e.id===eventId):null;if(existing){existing.context=ctx;existing.note=note;existing.discuss=discuss;existing.modifiedAt=new Date().toISOString();}else{day.events.push({id:uid(),context:ctx,note,discuss,createdAt:new Date().toISOString(),modifiedAt:new Date().toISOString()});}day.modifiedAt=new Date().toISOString();queueSaveWeek();appState.modal=null;render();return;}
-  if(a==='complete-day'){const d=getTodayEntry();const all=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets];const missing=all.filter(t=>targetValue(d,t.id)===null).map(t=>({id:t.id,label:t.label,type:t.type}));appState.modal={type:'complete',missing};render();return;}
-  if(a==='fill-zero-complete'){const d=getTodayEntry();for(const x of appState.modal.missing)d.ratings[x.id]=x.type==='yn'?false:0;completeDay(d);return;}
-  if(a==='confirm-complete'){completeDay(getTodayEntry());return;}
+  if(a==='add-event'){appState.modal={type:'event'};render({preserveScroll:true});return;}
+  if(a==='edit-event'){appState.modal={type:'event',eventId:b.dataset.eventId};render({preserveScroll:true});return;}
+  if(a==='delete-event'){const day=getSelectedEntry();const eventId=b.dataset.eventId;if(!confirm('Delete this note/event?'))return;day.events=day.events.filter(e=>e.id!==eventId);day.modifiedAt=new Date().toISOString();queueSaveWeek();render({preserveScroll:true});return;}
+  if(a==='save-event'){const ctx=$('#event-context')?.value.trim()||'';const note=$('#event-note')?.value.trim()||'';const discuss=$('#event-discuss')?.checked||false;if(!ctx&&!note){return;}const day=getSelectedEntry();const eventId=b.dataset.eventId||'';const existing=eventId?day.events.find(e=>e.id===eventId):null;if(existing){existing.context=ctx;existing.note=note;existing.discuss=discuss;existing.modifiedAt=new Date().toISOString();}else{day.events.push({id:uid(),context:ctx,note,discuss,createdAt:new Date().toISOString(),modifiedAt:new Date().toISOString()});}day.modifiedAt=new Date().toISOString();queueSaveWeek();appState.modal=null;render({preserveScroll:true});return;}
+  if(a==='complete-day'){const d=getSelectedEntry();const all=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets];const missing=all.filter(t=>targetValue(d,t.id)===null).map(t=>({id:t.id,label:t.label,type:t.type}));appState.modal={type:'complete',missing,date:d.date};render({preserveScroll:true});return;}
+  if(a==='fill-zero-complete'){const d=getSelectedEntry();for(const x of appState.modal.missing)d.ratings[x.id]=x.type==='yn'?false:0;completeDay(d);return;}
+  if(a==='confirm-complete'){completeDay(getSelectedEntry());return;}
   if(a==='another-prompt'){choosePrompt();render();return;}
   if(a==='save-prompt'){const id=appState.currentPromptId;const arr=appState.currentWeek.savedSEPrompts;appState.currentWeek.savedSEPrompts=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];queueSaveWeek();render();return;}
   if(a==='favorite-prompt'){const id=appState.currentPromptId;const arr=appState.profile.favoritePromptIds;appState.profile.favoritePromptIds=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];queueSaveProfile();render();return;}
   if(a==='reject-prompt'){const id=appState.currentPromptId;if(!appState.profile.notUsefulPromptIds.includes(id))appState.profile.notUsefulPromptIds.push(id);queueSaveProfile();choosePrompt();render();return;}
-  if(a==='saved-questions'){appState.modal={type:'saved-questions'};render();return;}
+  if(a==='saved-questions'){appState.modal={type:'saved-questions'};render({preserveScroll:true});return;}
   if(a==='add-my-question'){appState.modal={type:'my-question'};render();return;}
   if(a==='save-my-question'){const text=$('#my-question-text')?.value.trim();if(text){appState.profile.myQuestions.push({id:uid(),text,createdAt:new Date().toISOString()});queueSaveProfile();}appState.modal=null;render();return;}
   if(a==='print-report'){printTherapistReport();return;}
-  if(a==='backup'){appState.modal={type:'backup-password',error:''};render();return;}
+  if(a==='backup'){appState.modal={type:'backup-password',error:''};render({preserveScroll:true});return;}
   if(a==='do-backup'){await createBackupFromModal();return;}
   if(a==='restore'){pickRestoreFile();return;}
   if(a==='do-restore'){await restoreFromModal();return;}
   if(a==='lock-now'){lockApp();return;}
-  if(a==='change-pin'){appState.modal={type:'change-pin',error:''};render();return;}
+  if(a==='change-pin'){appState.modal={type:'change-pin',error:''};render({preserveScroll:true});return;}
   if(a==='do-change-pin'){await changePinFromModal();return;}
   if(a==='add-target'){const kind=b.dataset.kind;const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;arr.push({id:uid(),label:'New Target',definition:'',type:'scale',order:arr.length});queueSaveWeek();render();return;}
   if(a==='open-archive'){const w=await loadRecord(`week:${b.dataset.weekId}`);appState.modal={type:'archive-view',week:w};render();return;}
 }
-function completeDay(d){d.completed=true;d.completedAt=new Date().toISOString();d.modifiedAt=d.completedAt;queueSaveWeek();appState.modal=null;render();}
+function completeDay(d){d.completed=true;d.completedAt=new Date().toISOString();d.modifiedAt=d.completedAt;queueSaveWeek();appState.modal=null;render({preserveScroll:true});}
 
 async function hydrateArchiveLabels(){const rows=$$('[data-week-id]');for(const row of rows){const id=row.dataset.weekId;const w=await loadRecord(`week:${id}`);if(w){const span=row.querySelector('span');span.textContent=`${fmtDate(w.startDate)} – ${fmtDate(w.endDate)} ${w.id===appState.currentWeek.id?'(Current)':w.archived?'':'(Past)'}`;}}}
 
@@ -664,7 +713,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.2.3').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.3.0').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 
