@@ -83,7 +83,7 @@ class ReportPainter{
 
 function buildPdfBytes(report){
   const p=new ReportPainter();
-  p.text(report.title||'RO Diary',{size:18,bold:true,lineHeight:22});
+  p.text(report.title||'RO-DBT Diary',{size:18,bold:true,lineHeight:22});
   p.text(report.week||'',{size:10,gap:7});
 
   p.section('Completion');
@@ -104,7 +104,7 @@ function buildPdfBytes(report){
 
   // Keep ratings easy to scan and give narrative material enough room to breathe.
   p.newPage();
-  p.text(report.title||'RO Diary',{size:15,bold:true,lineHeight:19});
+  p.text(report.title||'RO-DBT Diary',{size:15,bold:true,lineHeight:19});
   p.text(`${report.week||''} - Details`,{size:9.5,gap:7});
 
   p.section('Skills Used');

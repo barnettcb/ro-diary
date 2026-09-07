@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.4-beta';
+const APP_VERSION = '0.5.5-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -564,7 +564,7 @@ function render(options={}) {
 
 function renderLock() {
   const setup=appState.setupNeeded;
-  const title=setup ? (appState.pinStage==='confirm'?'Confirm Passcode':'Create Passcode') : 'RO Diary';
+  const title=setup ? (appState.pinStage==='confirm'?'Confirm Passcode':'Create Passcode') : 'RO-DBT Diary';
   const subtitle=setup ? (appState.pinStage==='confirm'?'Enter the same 4 digits again.':'Choose a 4-digit passcode for everyday access.') : 'Enter your 4-digit passcode';
   const dots=[0,1,2,3].map(i=>`<span class="pin-dot ${i<appState.pinBuffer.length?'filled':''}"></span>`).join('');
   return `<div class="lock-screen"><div class="lock-card">
@@ -594,7 +594,7 @@ function renderAppShell() {
   else if(nav==='se') body=renderSE();
   else if(nav==='review') body=renderReview();
   else body=renderMore();
-  const title=appState.page ? ({'week-setup':'Week Setup','setup-guide':'Setup Guide','archive':'Archive','skills':'RO Skills','guided-practices':'Guided Practices','settings':'Settings'}[appState.page]) : 'RO Diary';
+  const title=appState.page ? ({'week-setup':'Week Setup','setup-guide':'Setup Guide','archive':'Archive','skills':'RO Skills','guided-practices':'Guided Practices','settings':'Settings'}[appState.page]) : 'RO-DBT Diary';
   return `<div class="app-shell">
     <header class="topbar"><div class="topbar-row"><div class="brand">${title}</div><div class="status-pill">${day?.completed?`${day.date===todayStr()?'Today':fmtDay(day.date)} complete`:'Private • Local'}</div></div></header>
     <main class="content">${body}${appState.saveError?`<div class="notice">Save problem: ${escapeHtml(appState.saveError)}</div>`:''}</main>
@@ -648,7 +648,7 @@ function renderDayNavigator(w,day){
 }
 
 function renderClinicalDailyField(field,day){const val=clinicalValue(day,field.id);if(field.type==='yn')return `<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(field.label)}</div></div><div class="scale yesno"><button class="score-btn ${val===false?'selected':''}" data-clinical-target="${field.id}" data-value="false">No</button><button class="score-btn ${val===true?'selected':''}" data-clinical-target="${field.id}" data-value="true">Yes</button></div></div>`;return `<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(field.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${val===n?'selected':''}" data-clinical-target="${field.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`;}
-function renderClinicalDailySection(w,day){if(!w.riskTrackingEnabled)return '';return `<section class="card"><div class="card-header"><div class="section-kicker">Optional clinical tracking</div><div class="section-title">Risk, Medication & Substance</div></div><div class="card-body"><div class="subtle small">These fields mirror the optional Houston/Lynch-style diary-card items. Unanswered remains blank. RO Diary is not monitored and does not alert your therapist or emergency services.</div>${CLINICAL_DAILY_FIELDS.map(f=>renderClinicalDailyField(f,day)).join('')}</div></section>`;}
+function renderClinicalDailySection(w,day){if(!w.riskTrackingEnabled)return '';return `<section class="card"><div class="card-header"><div class="section-kicker">Optional clinical tracking</div><div class="section-title">Risk, Medication & Substance</div></div><div class="card-body"><div class="subtle small">These fields mirror the optional Houston/Lynch-style diary-card items. Unanswered remains blank. RO-DBT Diary is not monitored and does not alert your therapist or emergency services.</div>${CLINICAL_DAILY_FIELDS.map(f=>renderClinicalDailyField(f,day)).join('')}</div></section>`;}
 function renderProcessRatings(w){if(!w.therapyProcessEnabled)return '';const vals=w.therapyProcess||blankTherapyProcess();return `<section class="card"><div class="card-header"><div class="section-kicker">Before therapy</div><div class="section-title">Therapy Alliance & Process</div></div><div class="card-body"><div class="subtle small">Rate 0–5 just prior to the session, matching the Houston diary-card structure.</div>${THERAPY_PROCESS_FIELDS.map(f=>`<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(f.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${vals[f.id]===n?'selected':''}" data-process-target="${f.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`).join('')}</div></section>`;}
 
 function renderToday(day) {
@@ -720,13 +720,13 @@ function renderGuidedPractices(){
       <div class="skill-ref">Handout 4.1 • Worksheet 4.A</div>
       <p class="guided-copy">RO-DBT Loving Kindness practice is used to help activate a warmer social-safety state. Use your personal recording of the Handout 4.1 practice.</p>
       ${audioBlock}
-      <div class="subtle small guided-storage-note">The imported audio is kept separately from your diary vault. RO Diary does not include it in encrypted diary backups, therapist PDFs, or GitHub files.</div>
+      <div class="subtle small guided-storage-note">The imported audio is kept separately from your diary vault. RO-DBT Diary does not include it in encrypted diary backups, therapist PDFs, or GitHub files.</div>
     </div></section>`;
 }
 
 function renderMore(){ const p=appState.profile; return `<h1 class="page-title">More</h1><section class="card"><div class="card-body menu-list">
   <button class="btn" data-page="week-setup">Week Setup</button><button class="btn" data-page="setup-guide">How to Set Up Your Diary Card</button><button class="btn" data-page="guided-practices">Guided Practices</button><button class="btn" data-page="archive">Archive</button><button class="btn" data-page="skills">RO Skills Reference</button><button class="btn" data-page="settings">Settings</button>
- </div></section><section class="card"><div class="card-body"><div class="list-row"><strong>Last encrypted backup</strong><span class="small">${p.lastBackupAt?new Date(p.lastBackupAt).toLocaleString():'None yet'}</span></div><button class="btn primary wide" style="margin-top:10px" data-action="backup">Create Encrypted Backup</button><button class="btn wide" style="margin-top:8px" data-action="restore">Restore Backup</button></div></section><div class="subtle">RO Diary ${APP_VERSION}. Data stays on this device unless you deliberately export it.</div>`;}
+ </div></section><section class="card"><div class="card-body"><div class="list-row"><strong>Last encrypted backup</strong><span class="small">${p.lastBackupAt?new Date(p.lastBackupAt).toLocaleString():'None yet'}</span></div><button class="btn primary wide" style="margin-top:10px" data-action="backup">Create Encrypted Backup</button><button class="btn wide" style="margin-top:8px" data-action="restore">Restore Backup</button></div></section><div class="subtle">RO-DBT Diary ${APP_VERSION}. Data stays on this device unless you deliberately export it.</div>`;}
 
 function renderWeekSetup(){const w=appState.currentWeek; return `<div class="btn-row"><button class="btn" data-action="back-page">← Back</button><button class="btn soft" data-page="setup-guide">Setup Guide</button></div><h1 class="page-title">Week Setup</h1><div class="subtle">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
  ${w.setupStatus==='pending'?'<div class="notice">This new week copied the prior week&apos;s setup. Review anything that changed in therapy, then finish setup.</div>':''}
@@ -746,7 +746,7 @@ function renderSetupGuide(){return `<button class="btn" data-action="back-guide"
    <p>Use the card to capture the week clearly enough that you and your therapist can quickly identify important patterns and events. Targets are selected to match the behaviors and experiences that are most useful to track in the current treatment focus, and they can change as therapy changes.</p>
    <p>Keep the card manageable. A smaller set of specific targets that you actually complete is more useful than a large checklist that becomes burdensome.</p>
  </div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">1</div><div class="section-title">Choose your therapy week</div></div><div class="card-body guide-copy"><p>Select the day your therapy week begins. RO Diary tracks seven days from that point. Changing the start day affects future weeks only; archived weeks keep their original dates.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">1</div><div class="section-title">Choose your therapy week</div></div><div class="card-body guide-copy"><p>Select the day your therapy week begins. RO-DBT Diary tracks seven days from that point. Changing the start day affects future weeks only; archived weeks keep their original dates.</p></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">2</div><div class="section-title">Choose Social Signals / Overt Behaviors</div></div><div class="card-body guide-copy">
    <p>These are concrete things another person could observe in your words, tone, face, posture, timing, or behavior. Choose signals that are relevant to your current treatment goals.</p>
    <div class="guide-example"><strong>Examples from RO-DBT treatment materials:</strong> walking away from conflict, going quiet when annoyed, telling other people what to do, smiling while angry, a flat or stony expression, or a sharp/strident voice tone.</div>
@@ -768,9 +768,9 @@ function renderSetupGuide(){return `<button class="btn" data-action="back-guide"
  <section class="card"><div class="card-header"><div class="section-kicker">8</div><div class="section-title">Turn on optional RO-DBT fields only when useful</div></div><div class="card-body guide-copy">
    <p><strong>Major OC Theme:</strong> use when you and your therapist are organizing the week around a major overcontrol/social-signaling theme.</p>
    <p><strong>Therapy Alliance / Process Ratings:</strong> weekly 0–5 ratings completed just before therapy when these process questions are useful to your treatment.</p>
-   <p><strong>Risk / Medication / Substance Fields:</strong> daily tracking that can be enabled when clinically relevant or requested by your therapist. RO Diary is not monitored and does not notify a therapist or emergency service.</p>
+   <p><strong>Risk / Medication / Substance Fields:</strong> daily tracking that can be enabled when clinically relevant or requested by your therapist. RO-DBT Diary is not monitored and does not notify a therapist or emergency service.</p>
  </div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">9</div><div class="section-title">Review and finish setup</div></div><div class="card-body guide-copy"><p>At the start of a new week, RO Diary can copy the prior setup. Review what changed in therapy, adjust only what needs changing, and then finish setup. Targets should evolve when the treatment focus changes.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">9</div><div class="section-title">Review and finish setup</div></div><div class="card-body guide-copy"><p>At the start of a new week, RO-DBT Diary can copy the prior setup. Review what changed in therapy, adjust only what needs changing, and then finish setup. Targets should evolve when the treatment focus changes.</p></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Target quality</div><div class="section-title">What makes a useful target?</div></div><div class="card-body guide-copy"><ul class="guide-list">
    <li><strong>Specific:</strong> you can tell what counts and what does not.</li>
    <li><strong>Relevant:</strong> it connects to a current treatment problem, valued goal, or OC theme.</li>
@@ -861,7 +861,7 @@ function renderPrintReport(){
   const saved=w.savedSEPrompts.map(promptById).filter(Boolean);
   const oc=(w.majorOCThemeEnabled && w.majorOCTheme)?`<div class="report-context-row"><strong>Major OC Theme:</strong> ${escapeHtml(w.majorOCTheme)}</div>`:'';
   return `<div class="print-report">
-    <div class="report-heading"><div><h1>RO Diary — ${escapeHtml(appState.profile.pdfName||'')}</h1><div class="report-meta">Therapy week ${fmtDate(w.startDate,{month:'short',day:'numeric',year:'numeric'})} – ${fmtDate(w.endDate,{month:'short',day:'numeric',year:'numeric'})}</div></div></div>
+    <div class="report-heading"><div><h1>RO-DBT Diary — ${escapeHtml(appState.profile.pdfName||'')}</h1><div class="report-meta">Therapy week ${fmtDate(w.startDate,{month:'short',day:'numeric',year:'numeric'})} – ${fmtDate(w.endDate,{month:'short',day:'numeric',year:'numeric'})}</div></div></div>
     <h2>Completion</h2>${renderPrintCompletion(w)}
     <h2>Private Behaviors, Emotions & Urges</h2>${renderPrintRatingsTable(w.privateTargets,w)}
     <h2>Social Signals & Overt Behaviors</h2>${renderPrintRatingsTable(w.socialTargets,w)}
@@ -869,7 +869,7 @@ function renderPrintReport(){
     <h2>Notes / Events</h2>${events.length?events.map(e=>`<div class="report-event ${e.discuss?'report-event-flagged':''}"><div><strong>${fmtDay(e.date)} ${fmtDate(e.date,{month:'numeric',day:'numeric'})}${e.context?` — ${escapeHtml(e.context)}`:''}</strong>${e.discuss?' <span class="report-flag">Discuss in Therapy</span>':''}</div>${e.note?`<div class="report-event-note">${escapeHtml(e.note)}</div>`:''}</div>`).join(''):'<div class="report-empty">No notes or events recorded.</div>'}
     <h2>Self-Enquiry</h2><div class="report-context-row"><strong>Weekly focus:</strong> ${escapeHtml(w.weeklySEFocus||'—')}</div>${saved.length?`<div class="report-context-row"><strong>Saved prompts this week:</strong><ul>${saved.map(p=>`<li>${escapeHtml(p.text)}</li>`).join('')}</ul></div>`:''}${(w.newSEQuestions||[]).length?`<div class="report-context-row"><strong>Questions discovered this week:</strong><ul>${w.newSEQuestions.map(q=>`<li>${escapeHtml(q.text)}</li>`).join('')}</ul></div>`:''}
     <h2>Week Context</h2><div class="report-context-row"><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div class="report-context-row"><strong>Valued Goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${oc}
-    <div class="report-footer">Generated locally by RO Diary ${APP_VERSION} • ${escapeHtml(new Date().toLocaleString())}</div>
+    <div class="report-footer">Generated locally by RO-DBT Diary ${APP_VERSION} • ${escapeHtml(new Date().toLocaleString())}</div>
   </div>`;
 }
 
@@ -923,7 +923,7 @@ function filenameSafePart(value){
 function pdfFilenameBase(date=new Date()){
   const pad=n=>String(n).padStart(2,'0');
   const stamp=`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}_${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
-  return `RO-Diary-${filenameSafePart(appState.profile?.pdfName||'')}-${stamp}`;
+  return `RO-DBT-Diary-${filenameSafePart(appState.profile?.pdfName||'')}-${stamp}`;
 }
 function buildPdfReportData(){
   const w=appState.currentWeek; const dates=weekDates(w);
@@ -933,7 +933,7 @@ function buildPdfReportData(){
   const events=dates.flatMap(d=>w.days[d].events.map(e=>({day:fmtDay(d),date:fmtDate(d,{month:'numeric',day:'numeric'}),context:e.context||'',note:e.note||'',discuss:!!e.discuss})));
   const saved=w.savedSEPrompts.map(promptById).filter(Boolean).map(p=>p.text);
   return {
-    title:`RO Diary — ${appState.profile.pdfName||''}`,
+    title:`RO-DBT Diary — ${appState.profile.pdfName||''}`,
     week:`Therapy week ${fmtDate(w.startDate,{month:'short',day:'numeric',year:'numeric'})} – ${fmtDate(w.endDate,{month:'short',day:'numeric',year:'numeric'})}`,
     completion,
     dayHeaders:completion.map(x=>`${x.day} ${x.date}`),
@@ -952,7 +952,7 @@ function buildPdfReportData(){
     valuedGoal:w.valuedGoal||'—',
     majorOCThemeEnabled:!!w.majorOCThemeEnabled,
     majorOCTheme:w.majorOCThemeEnabled?(w.majorOCTheme||'—'):'',
-    generated:`Generated locally by RO Diary ${APP_VERSION} • ${new Date().toLocaleString()}`
+    generated:`Generated locally by RO-DBT Diary ${APP_VERSION} • ${new Date().toLocaleString()}`
   };
 }
 async function printTherapistReport(){
@@ -1068,10 +1068,10 @@ async function deleteArchivedWeek(id){
 async function hydrateArchiveLabels(){const rows=$$('[data-week-id]');for(const row of rows){const id=row.dataset.weekId;const w=await loadRecord(`week:${id}`);if(w){const span=row.querySelector('span');span.textContent=`${fmtDate(w.startDate)} – ${fmtDate(w.endDate)} ${w.id===appState.currentWeek.id?'(Current)':w.archived?'':'(Past)'}`;}}}
 
 async function collectPortableData(){ const profile=structuredClone(appState.profile); const weeks=[]; for(const id of profile.weekIds){const w= id===appState.currentWeek.id ? structuredClone(appState.currentWeek) : await loadRecord(`week:${id}`); if(w) weeks.push(w);} return {format:'ro-diary-data',version:1,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),profile,weeks}; }
-function validatePortableData(data){if(!data||data.format!=='ro-diary-data'||data.version!==1||!data.profile||!Array.isArray(data.weeks))throw new Error('This is not a supported RO Diary backup.');if(!data.profile.currentWeekId||!Array.isArray(data.profile.weekIds))throw new Error('Backup profile is incomplete.');for(const w of data.weeks){if(!w.id||!w.startDate||!w.endDate||!w.days||!Array.isArray(w.privateTargets)||!Array.isArray(w.socialTargets))throw new Error('A therapy week in the backup is invalid.');for(const d of Object.values(w.days)){if(!d.date||!d.ratings||!Array.isArray(d.skills)||!Array.isArray(d.events))throw new Error('A daily entry in the backup is invalid.');for(const v of Object.values(d.ratings)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A rating in the backup is invalid.');}if(d.clinical){for(const v of Object.values(d.clinical)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A clinical tracking value in the backup is invalid.');}}}if(w.therapyProcess){for(const v of Object.values(w.therapyProcess)){if(v!==null && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A therapy-process rating in the backup is invalid.');}}}return true;}
-async function createBackupFromModal(){const p1=$('#backup-pass1')?.value||'';const p2=$('#backup-pass2')?.value||'';if(p1.length<10){appState.modal.error='Use at least 10 characters for the backup password.';render();return;}if(p1!==p2){appState.modal.error='Passwords do not match.';render();return;}try{appState.busy=true;const portable=await collectPortableData();const salt=randomBytes(16);const key=await deriveBackupKey(p1,salt);const e=await aesEncrypt(key,enc.encode(JSON.stringify(portable)));const envelope={format:'ro-diary-backup',version:1,kdf:{name:'PBKDF2-SHA256',iterations:BACKUP_ITERATIONS,salt:arrToB64(salt)},cipher:{name:'AES-256-GCM',iv:arrToB64(e.iv)},data:arrToB64(e.data)};const blob=new Blob([JSON.stringify(envelope)],{type:'application/octet-stream'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`RO-Diary-Backup-${todayStr()}.rodbt`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);appState.profile.lastBackupAt=new Date().toISOString();queueSaveProfile();appState.modal=null;render();}catch(e){appState.modal.error=e.message;render();}finally{appState.busy=false;}}
+function validatePortableData(data){if(!data||data.format!=='ro-diary-data'||data.version!==1||!data.profile||!Array.isArray(data.weeks))throw new Error('This is not a supported RO-DBT Diary backup.');if(!data.profile.currentWeekId||!Array.isArray(data.profile.weekIds))throw new Error('Backup profile is incomplete.');for(const w of data.weeks){if(!w.id||!w.startDate||!w.endDate||!w.days||!Array.isArray(w.privateTargets)||!Array.isArray(w.socialTargets))throw new Error('A therapy week in the backup is invalid.');for(const d of Object.values(w.days)){if(!d.date||!d.ratings||!Array.isArray(d.skills)||!Array.isArray(d.events))throw new Error('A daily entry in the backup is invalid.');for(const v of Object.values(d.ratings)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A rating in the backup is invalid.');}if(d.clinical){for(const v of Object.values(d.clinical)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A clinical tracking value in the backup is invalid.');}}}if(w.therapyProcess){for(const v of Object.values(w.therapyProcess)){if(v!==null && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A therapy-process rating in the backup is invalid.');}}}return true;}
+async function createBackupFromModal(){const p1=$('#backup-pass1')?.value||'';const p2=$('#backup-pass2')?.value||'';if(p1.length<10){appState.modal.error='Use at least 10 characters for the backup password.';render();return;}if(p1!==p2){appState.modal.error='Passwords do not match.';render();return;}try{appState.busy=true;const portable=await collectPortableData();const salt=randomBytes(16);const key=await deriveBackupKey(p1,salt);const e=await aesEncrypt(key,enc.encode(JSON.stringify(portable)));const envelope={format:'ro-diary-backup',version:1,kdf:{name:'PBKDF2-SHA256',iterations:BACKUP_ITERATIONS,salt:arrToB64(salt)},cipher:{name:'AES-256-GCM',iv:arrToB64(e.iv)},data:arrToB64(e.data)};const blob=new Blob([JSON.stringify(envelope)],{type:'application/octet-stream'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`RO-DBT-Diary-Backup-${todayStr()}.rodbt`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);appState.profile.lastBackupAt=new Date().toISOString();queueSaveProfile();appState.modal=null;render();}catch(e){appState.modal.error=e.message;render();}finally{appState.busy=false;}}
 let pendingRestoreEnvelope=null;
-function pickRestoreFile(){const input=document.createElement('input');input.type='file';input.accept='.rodbt,application/octet-stream,application/json';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{pendingRestoreEnvelope=JSON.parse(await file.text());if(pendingRestoreEnvelope.format!=='ro-diary-backup')throw new Error('Not an RO Diary backup.');appState.modal={type:'restore-password',error:''};render();}catch(e){alert(`Backup could not be opened: ${e.message}`);}};input.click();}
+function pickRestoreFile(){const input=document.createElement('input');input.type='file';input.accept='.rodbt,application/octet-stream,application/json';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{pendingRestoreEnvelope=JSON.parse(await file.text());if(pendingRestoreEnvelope.format!=='ro-diary-backup')throw new Error('Not an RO-DBT Diary backup.');appState.modal={type:'restore-password',error:''};render();}catch(e){alert(`Backup could not be opened: ${e.message}`);}};input.click();}
 async function restoreFromModal(){const pass=$('#restore-pass')?.value||'';try{appState.busy=true;const env=pendingRestoreEnvelope;if(!env)throw new Error('No backup selected.');const key=await deriveBackupKey(pass,b64ToArr(env.kdf.salt));const plain=await aesDecrypt(key,{iv:b64ToArr(env.cipher.iv),data:b64ToArr(env.data)});const data=JSON.parse(dec.decode(plain));validatePortableData(data);if(!confirm(`Restore ${data.weeks.length} therapy week(s) and replace the current vault?`))return;
  const oldProfile=await idbGet('records','profile'); const oldWeekPayloads={}; for(const id of appState.profile.weekIds) oldWeekPayloads[id]=await idbGet('records',`week:${id}`);
  try{const encryptedProfile=await encryptJson(data.profile);const encryptedWeeks={};for(const w of data.weeks)encryptedWeeks[w.id]=await encryptJson(w);await idbPut('records','profile',encryptedProfile);for(const id of appState.profile.weekIds)await idbDelete('records',`week:${id}`);for(const [id,p] of Object.entries(encryptedWeeks))await idbPut('records',`week:${id}`,p);appState.profile=data.profile;appState.currentWeek=data.weeks.find(w=>w.id===data.profile.currentWeekId)||data.weeks.at(-1);pendingRestoreEnvelope=null;appState.modal=null;render();}catch(e){if(oldProfile)await idbPut('records','profile',oldProfile);for(const [id,p] of Object.entries(oldWeekPayloads))if(p)await idbPut('records',`week:${id}`,p);throw e;}
@@ -1082,13 +1082,13 @@ async function changePinFromModal(){const oldPin=$('#old-pin')?.value||'';const 
 function deleteLegacyDatabase(name){return new Promise(resolve=>{try{const req=indexedDB.deleteDatabase(name);req.onsuccess=req.onerror=req.onblocked=()=>resolve();}catch(_){resolve();}});}
 
 async function init(){
-  if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
+  if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.4').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.5').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 
-init().catch(e=>{document.getElementById('app').innerHTML=`<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO Diary</div><div class="error">${escapeHtml(e.message)}</div></div></div>`;});
+init().catch(e=>{document.getElementById('app').innerHTML=`<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">${escapeHtml(e.message)}</div></div></div>`;});
 
 })();

@@ -1,12 +1,12 @@
 {
-  "name": "RO Diary",
-  "short_name": "RO Diary",
-  "description": "Private local RO-DBT diary card and self-enquiry tool.",
+  "name": "RO-DBT Diary",
+  "short_name": "RO-DBT Diary",
+  "description": "Private local RO-DBT diary card, self-enquiry, and guided-practice tool.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f4f7fb",
-  "theme_color": "#2f5f8f",
+  "background_color": "#edf3f8",
+  "theme_color": "#315f8b",
   "icons": [
     {
       "src": "icons/icon-192.png",

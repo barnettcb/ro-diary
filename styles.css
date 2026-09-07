@@ -145,7 +145,7 @@ th:first-child, td:first-child { text-align:left; position:sticky; left:0; backg
 .guide-list li { margin:7px 0; line-height:1.45; }
 .guide-example { margin:10px 0; padding:10px 11px; border:1px solid var(--line); border-radius:10px; background:#f8fafc; font-size:13px; line-height:1.45; }
 
-/* 0.5.4 Home + Guided Practices */
+/* Home + Guided Practices */
 .bottom-nav-inner { grid-template-columns:repeat(5,1fr); }
 .nav-btn { font-size:11px; white-space:nowrap; padding-left:2px; padding-right:2px; }
 .home-summary-date { font-size:18px; font-weight:750; margin-bottom:4px; }
@@ -164,3 +164,76 @@ th:first-child, td:first-child { text-align:left; position:sticky; left:0; backg
   .home-grid { grid-template-columns:1fr; }
   .nav-btn { font-size:10px; }
 }
+
+/* 0.5.5 visual refresh + lock-screen gesture behavior */
+:root {
+  --bg: #edf3f8;
+  --panel-2: #dfe8f1;
+  --line: #c8d5e1;
+  --accent: #315f8b;
+  --accent-soft: #dceaf6;
+  --shadow: 0 3px 14px rgba(35, 67, 96, 0.09);
+}
+
+/* Preserve normal pinch/double-tap behavior throughout the app, but prevent
+   Safari's double-tap-to-zoom gesture on the passcode screen. */
+.lock-screen,
+.lock-screen * {
+  touch-action: manipulation;
+}
+
+html, body, #app {
+  background: linear-gradient(180deg, #edf4f9 0%, #f3f6f8 100%);
+}
+
+.topbar {
+  background: rgba(226, 237, 247, .96);
+  border-bottom-color: #bfd0df;
+}
+
+.brand { color: #244f78; }
+.status-pill { background: #f2f6f9; color: #53677a; border: 1px solid #d0dce6; }
+
+.card { border-color: #c9d7e3; }
+.card-header {
+  background: linear-gradient(180deg, #f4f8fc 0%, #eaf1f7 100%);
+  border-bottom-color: #ccd9e4;
+}
+.section-kicker { color: #315f8b; }
+
+.score-btn,
+.check-row,
+.event-card,
+.prompt-box,
+.guide-example {
+  background: #f3f6f8;
+}
+
+.info-btn { background: #f8fbfd; }
+.btn.soft { background: #e3eef8; border-color: #c2d5e6; }
+
+.bottom-nav {
+  background: rgba(239, 245, 249, .98);
+  border-top-color: #c3d3df;
+}
+.nav-btn.active { background: #d9e9f6; }
+
+.lock-screen {
+  background: linear-gradient(160deg, #dcebf6 0%, #edf3f8 48%, #e7ecf1 100%);
+}
+.lock-card {
+  border-color: #bed0df;
+  box-shadow: 0 8px 28px rgba(35, 67, 96, .13);
+}
+.pin-key { background: #eef4f8; border-color: #c5d4df; }
+.pin-key:active { background: #dceaf6; }
+
+.home-summary { background: #f8fbfd; }
+.home-tile:nth-child(odd) { background: #eef5fb; }
+.home-tile:nth-child(even) { background: #f1f3f5; }
+.home-tile { border-color: #c8d6e2; }
+.home-tile strong { color: #28577f; }
+.home-tile:active { background: #dceaf6; border-color: #abc5da; }
+
+.menu-list .btn { background: #f6f9fb; }
+.menu-list .btn:active { background: #e2edf6; }
