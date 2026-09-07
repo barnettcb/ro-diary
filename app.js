@@ -1,14 +1,15 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.3-beta';
+const APP_VERSION = '0.5.4-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const PIN_ITERATIONS = 220000;
 const BACKUP_ITERATIONS = 600000;
 const AUTO_LOCK_MS = 5 * 60 * 1000;
 const WEEK_START_DAY = 4; // Thursday
+const GUIDED_LKM_KEY = 'guided:lkm';
 
 const DEFAULT_PRIVATE_TARGETS = [
   ['avoid-escape','Avoid / Escape Urge','Urge to get away from, end, postpone, or avoid an uncomfortable task, interaction, feeling, or situation.'],
@@ -60,7 +61,7 @@ const SKILLS = [
     'F — Respond flexibly and with humility based on what the situation and your values call for. Openness does not require automatic agreement or surrender.'
   ]},
   {id:'big3', name:'Big 3 + 1', lesson:3, reference:'Lesson 3 • Handout 3.1 • Worksheet 3.A', purpose:'Uses posture, breathing, facial expression, and eyebrow movement to help activate social safety and communicate openness.', useWhen:'Useful when your body feels guarded, tense, threat-focused, or socially closed.', steps:['Lean back rather than leaning forward into threat or control.','Take a slow, deep breath.','Use a small closed-mouth cooperative smile.','Add a brief eyebrow wag when appropriate to signal friendliness and openness.']},
-  {id:'lkm', name:'Loving Kindness Meditation', lesson:4, reference:'Lesson 4 • Handout 4.1 • Worksheet 4.A', purpose:'Cultivates a warmer social-safety state by intentionally practicing goodwill toward yourself or another person.', useWhen:'Useful when resentment, threat, distance, or a cold/guarded stance is making openness difficult.', steps:['Settle attention and bring a person to mind.','Practice sincere wishes for ease, contentment, joy, and safety.','Notice resistance without forcing a feeling; repeatedly return to the practice.']},
+  {id:'lkm', name:'Loving Kindness Meditation', lesson:4, reference:'Lesson 4 • Handout 4.1 • Worksheet 4.A', purpose:'Cultivates a warmer social-safety state by first generating feelings of warmth or loving kindness, then extending them toward someone you care about and a neutral person.', useWhen:'Useful when resentment, threat, distance, or a cold/guarded stance is making openness difficult.', steps:['Settle attention on the breath and heart center, then recall an experience associated with warmth, love, or kindness.','Extend wishes for ease, contentment, joy, and safety toward someone you already care about.','Let that image dissolve, then extend the same warm wishes toward a neutral person.']},
   {id:'varies', name:'Flexible Mind VARIEs', lesson:5, reference:'Lesson 5 • Handout 5.1 • Worksheet 5.A', purpose:'Helps you try novel behavior instead of relying automatically on familiar routines, rehearsal, or avoidance.', useWhen:'Useful when excessive preparation, certainty-seeking, perfectionism, or habit is blocking new learning.', steps:['Visualize the new behavior and likely outcomes.','Check the accuracy of predictions and assumptions.','Relinquish unnecessary rehearsal or preparation.','Initiate the new behavior while supporting social safety.','Evaluate what actually happened and what you learned.']},
   {id:'sage', name:'Flexible Mind SAGE', lesson:8, reference:'Lesson 8 • Handout 8.4–8.5 • Worksheet 8.A', purpose:'Helps evaluate and respond to shame, embarrassment, rejection, and exclusion without automatically hiding, appeasing, attacking, or dismissing the emotion.', useWhen:'Useful after a social event that leaves you ashamed, embarrassed, rejected, or strongly self-conscious.', steps:['Use self-enquiry to examine what the emotion may be telling you.','Assess whether shame is warranted, partly warranted, or unwarranted.','When warranted, take responsibility and repair without collapsing or over-justifying.','When unwarranted, go opposite to hiding or unnecessary appeasement and signal openness appropriately.']},
   {id:'deep', name:'Flexible Mind Is DEEP', lesson:10, reference:'Lesson 10 • Handout 10.3 • Worksheet 10.A–10.B', purpose:'Uses valued goals to guide how openly and effectively you express emotion through social signals.', useWhen:'Useful when you know what you feel but are unsure how much to express, conceal, or communicate.', steps:['Determine the valued goal for the interaction.','Express emotion effectively rather than automatically inhibiting or exaggerating it.','Examine the interpersonal outcome and what your signals communicated.','Practice open expression repeatedly so it becomes more natural.']},
@@ -243,8 +244,9 @@ let appState = {
   pinStage: 'unlock',
   setupPinFirst: '',
   pinError: '',
-  nav: 'today',
+  nav: 'home',
   page: null,
+  pageReturnNav: null,
   profile: null,
   currentWeek: null,
   selectedDate: null,
@@ -255,6 +257,7 @@ let appState = {
   saveChain: Promise.resolve(),
   saveError: null,
   busy: false,
+  guidedAudio: {present:false,name:'',type:'',size:0,addedAt:null,blob:null,url:null},
 };
 
 const $ = (sel, root=document) => root.querySelector(sel);
@@ -299,6 +302,7 @@ function openDB() {
       if(!d.objectStoreNames.contains('meta')) d.createObjectStore('meta');
       if(!d.objectStoreNames.contains('secure')) d.createObjectStore('secure');
       if(!d.objectStoreNames.contains('records')) d.createObjectStore('records');
+      if(!d.objectStoreNames.contains('media')) d.createObjectStore('media');
     };
     req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
   });
@@ -336,6 +340,25 @@ async function decryptJson(payload) {
 async function saveRecord(key,obj) { const payload=await encryptJson(obj); await idbPut('records',key,payload); }
 async function loadRecord(key) { const p=await idbGet('records',key); return p ? decryptJson(p) : null; }
 
+function emptyGuidedAudio(){ return {present:false,name:'',type:'',size:0,addedAt:null,blob:null,url:null}; }
+function revokeGuidedAudioUrl(){
+  if(appState.guidedAudio?.url){ try{URL.revokeObjectURL(appState.guidedAudio.url);}catch(_){} }
+}
+async function loadGuidedAudioState(){
+  revokeGuidedAudioUrl();
+  const media=await idbGet('media',GUIDED_LKM_KEY);
+  if(!media?.blob){ appState.guidedAudio=emptyGuidedAudio(); return; }
+  appState.guidedAudio={
+    present:true,
+    name:media.name||'Loving Kindness Meditation',
+    type:media.type||media.blob.type||'audio/mpeg',
+    size:media.size||media.blob.size||0,
+    addedAt:media.addedAt||null,
+    blob:media.blob,
+    url:URL.createObjectURL(media.blob)
+  };
+}
+
 async function setupVault(pin) {
   const deviceKey = await crypto.subtle.generateKey({name:'AES-GCM',length:256}, false, ['encrypt','decrypt']);
   const rawVault = randomBytes(32);
@@ -367,6 +390,7 @@ async function unlockVault(pin) {
     rawVault.fill(0);
     await idbPut('meta','failedAttempts',{count:0,nextAllowedAt:0});
     await loadAppData();
+    await loadGuidedAudioState();
     return true;
   } catch (e) {
     vaultKey=null;
@@ -462,7 +486,8 @@ function queueSaveProfile() {
 }
 
 function lockApp() {
-  vaultKey=null; appState.locked=true; appState.pinBuffer=''; appState.pinError=''; appState.profile=null; appState.currentWeek=null; appState.selectedDate=null; appState.modal=null; render();
+  revokeGuidedAudioUrl();
+  vaultKey=null; appState.locked=true; appState.pinBuffer=''; appState.pinError=''; appState.profile=null; appState.currentWeek=null; appState.selectedDate=null; appState.modal=null; appState.page=null; appState.pageReturnNav=null; appState.nav='home'; appState.guidedAudio=emptyGuidedAudio(); render();
 }
 
 function selectableDates(w=appState.currentWeek){
@@ -562,12 +587,14 @@ function renderAppShell() {
   else if(appState.page==='setup-guide') body=renderSetupGuide();
   else if(appState.page==='archive') body=renderArchive();
   else if(appState.page==='skills') body=renderSkillsReference();
+  else if(appState.page==='guided-practices') body=renderGuidedPractices();
   else if(appState.page==='settings') body=renderSettings();
+  else if(nav==='home') body=renderHome();
   else if(nav==='today') body=renderToday(day);
   else if(nav==='se') body=renderSE();
   else if(nav==='review') body=renderReview();
   else body=renderMore();
-  const title=appState.page ? ({'week-setup':'Week Setup','setup-guide':'Setup Guide','archive':'Archive','skills':'RO Skills','settings':'Settings'}[appState.page]) : 'RO Diary';
+  const title=appState.page ? ({'week-setup':'Week Setup','setup-guide':'Setup Guide','archive':'Archive','skills':'RO Skills','guided-practices':'Guided Practices','settings':'Settings'}[appState.page]) : 'RO Diary';
   return `<div class="app-shell">
     <header class="topbar"><div class="topbar-row"><div class="brand">${title}</div><div class="status-pill">${day?.completed?`${day.date===todayStr()?'Today':fmtDay(day.date)} complete`:'Private • Local'}</div></div></header>
     <main class="content">${body}${appState.saveError?`<div class="notice">Save problem: ${escapeHtml(appState.saveError)}</div>`:''}</main>
@@ -575,11 +602,32 @@ function renderAppShell() {
   </div>`;
 }
 function renderNav(nav){ return `<nav class="bottom-nav"><div class="bottom-nav-inner">
+  <button class="nav-btn ${nav==='home'?'active':''}" data-nav="home">Home</button>
   <button class="nav-btn ${nav==='today'?'active':''}" data-nav="today">Today</button>
   <button class="nav-btn ${nav==='se'?'active':''}" data-nav="se">Self-Enquiry</button>
   <button class="nav-btn ${nav==='review'?'active':''}" data-nav="review">Review</button>
   <button class="nav-btn ${nav==='more'?'active':''}" data-nav="more">More</button>
 </div></nav>`; }
+
+function renderHome(){
+  const w=appState.currentWeek;
+  const today=w.days[todayStr()] || getSelectedEntry();
+  const status=today?.completed?'Complete':'Incomplete';
+  return `<h1 class="page-title">Home</h1><div class="subtle">Choose where you want to go.</div>
+    <section class="card home-summary"><div class="card-body">
+      <div class="home-summary-date">${escapeHtml(fmtLong(today?.date||todayStr()))}</div>
+      <div class="list-row"><span>Therapy week</span><strong>${escapeHtml(fmtDate(w.startDate))} – ${escapeHtml(fmtDate(w.endDate))}</strong></div>
+      <div class="list-row"><span>Today&apos;s diary card</span><strong class="${today?.completed?'home-status-complete':''}">${status}</strong></div>
+    </div></section>
+    <div class="home-grid">
+      <button class="home-tile" data-nav="today"><strong>Today</strong><span>Complete or edit today&apos;s diary card.</span></button>
+      <button class="home-tile" data-nav="se"><strong>Self-Enquiry</strong><span>Weekly focus, prompts, and saved questions.</span></button>
+      <button class="home-tile" data-page="guided-practices"><strong>Guided Practices</strong><span>Open your personal Loving Kindness meditation.</span></button>
+      <button class="home-tile" data-nav="review"><strong>Review</strong><span>Review the week and export the therapist PDF.</span></button>
+      <button class="home-tile" data-page="week-setup"><strong>Week Setup</strong><span>Update targets, focus skills, and weekly fields.</span></button>
+      <button class="home-tile" data-nav="more"><strong>More</strong><span>Backup, archive, skills reference, and settings.</span></button>
+    </div>`;
+}
 
 function renderTargetSection(kicker,title,targets,day) {
   return `<section class="card"><div class="card-header"><div class="section-kicker">${escapeHtml(kicker)}</div><div class="section-title">${escapeHtml(title)}</div></div><div class="card-body">
@@ -661,8 +709,23 @@ function renderReview(){const w=appState.currentWeek; const dates=weekDates(w); 
  <section class="card"><div class="card-header"><div class="section-kicker">Week context</div></div><div class="card-body"><div><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div style="margin-top:8px"><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${w.majorOCThemeEnabled?`<div style="margin-top:8px"><strong>Major OC Theme:</strong> ${escapeHtml(w.majorOCTheme||'—')}</div>`:''}</div></section>
  <section class="card"><div class="card-body"><button class="btn primary wide" data-action="print-report">Export Therapist PDF</button><button class="btn wide" style="margin-top:8px" data-action="backup">Create Encrypted Backup</button></div></section>`;}
 
+function renderGuidedPractices(){
+  const a=appState.guidedAudio||emptyGuidedAudio();
+  const audioBlock=a.present?`<audio id="lkm-audio" class="guided-audio" controls preload="metadata" src="${escapeHtml(a.url)}"></audio>
+    <div class="small subtle guided-audio-meta">${escapeHtml(a.name)}${a.addedAt?` • Imported ${escapeHtml(new Date(a.addedAt).toLocaleDateString())}`:''}</div>
+    <div class="btn-row guided-audio-actions"><button class="btn soft" data-action="import-guided-lkm">Replace Audio</button><button class="btn danger" data-action="remove-guided-lkm">Remove Audio</button></div>`
+    :`<div class="notice">No Loving Kindness audio has been imported on this device yet.</div><button class="btn primary wide" data-action="import-guided-lkm">Import Loving Kindness Audio</button>`;
+  return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Guided Practices</h1><div class="subtle">Personal guided-practice audio stored only on this device.</div>
+    <section class="card"><div class="card-header"><div class="section-kicker">Lesson 4</div><div class="section-title">Loving Kindness Meditation</div></div><div class="card-body">
+      <div class="skill-ref">Handout 4.1 • Worksheet 4.A</div>
+      <p class="guided-copy">RO-DBT Loving Kindness practice is used to help activate a warmer social-safety state. Use your personal recording of the Handout 4.1 practice.</p>
+      ${audioBlock}
+      <div class="subtle small guided-storage-note">The imported audio is kept separately from your diary vault. RO Diary does not include it in encrypted diary backups, therapist PDFs, or GitHub files.</div>
+    </div></section>`;
+}
+
 function renderMore(){ const p=appState.profile; return `<h1 class="page-title">More</h1><section class="card"><div class="card-body menu-list">
-  <button class="btn" data-page="week-setup">Week Setup</button><button class="btn" data-page="setup-guide">How to Set Up Your Diary Card</button><button class="btn" data-page="archive">Archive</button><button class="btn" data-page="skills">RO Skills Reference</button><button class="btn" data-page="settings">Settings</button>
+  <button class="btn" data-page="week-setup">Week Setup</button><button class="btn" data-page="setup-guide">How to Set Up Your Diary Card</button><button class="btn" data-page="guided-practices">Guided Practices</button><button class="btn" data-page="archive">Archive</button><button class="btn" data-page="skills">RO Skills Reference</button><button class="btn" data-page="settings">Settings</button>
  </div></section><section class="card"><div class="card-body"><div class="list-row"><strong>Last encrypted backup</strong><span class="small">${p.lastBackupAt?new Date(p.lastBackupAt).toLocaleString():'None yet'}</span></div><button class="btn primary wide" style="margin-top:10px" data-action="backup">Create Encrypted Backup</button><button class="btn wide" style="margin-top:8px" data-action="restore">Restore Backup</button></div></section><div class="subtle">RO Diary ${APP_VERSION}. Data stays on this device unless you deliberately export it.</div>`;}
 
 function renderWeekSetup(){const w=appState.currentWeek; return `<div class="btn-row"><button class="btn" data-action="back-page">← Back</button><button class="btn soft" data-page="setup-guide">Setup Guide</button></div><h1 class="page-title">Week Setup</h1><div class="subtle">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
@@ -747,7 +810,8 @@ function renderModal(){
   if(m.type==='skill-info'){
     const s=skillById(m.skillId); if(!s) return '';
     const steps=s.steps?.length?`<div class="field"><label>Quick guide</label><ol class="skill-steps">${s.steps.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ol></div>`:'';
-    return `<div class="modal-backdrop"><div class="modal"><h2>${escapeHtml(s.name)}</h2><div class="skill-ref">${escapeHtml(s.reference||'')}</div><div class="field"><label>What it is for</label><div>${escapeHtml(s.purpose||'')}</div></div><div class="field"><label>When it may be useful</label><div>${escapeHtml(s.useWhen||'')}</div></div>${steps}<div class="subtle">This is a brief reference, not a replacement for the RO-DBT handout/worksheet.</div><button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button></div></div>`;
+    const guided=s.id==='lkm'?`<button class="btn soft wide" style="margin-top:12px" data-action="open-guided-lkm">Play Guided Meditation</button>`:'';
+    return `<div class="modal-backdrop"><div class="modal"><h2>${escapeHtml(s.name)}</h2><div class="skill-ref">${escapeHtml(s.reference||'')}</div><div class="field"><label>What it is for</label><div>${escapeHtml(s.purpose||'')}</div></div><div class="field"><label>When it may be useful</label><div>${escapeHtml(s.useWhen||'')}</div></div>${steps}<div class="subtle">This is a brief reference, not a replacement for the RO-DBT handout/worksheet.</div>${guided}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button></div></div>`;
   }
   if(m.type==='saved-questions'){
     const w=appState.currentWeek;
@@ -827,8 +891,8 @@ async function handlePinDigit(d){ if(appState.busy || appState.pinBuffer.length>
 
 function bindApp(){
   $$('[data-nav]').forEach(b=>b.addEventListener('click',()=>{appState.nav=b.dataset.nav;appState.page=null;render();}));
-  $$('[data-page]').forEach(b=>b.addEventListener('click',()=>{const next=b.dataset.page;if(next==='setup-guide')appState.guideReturn=appState.page||null;appState.page=next;render(); if(appState.page==='archive') hydrateArchiveLabels();}));
-  $('[data-action="back-page"]')?.addEventListener('click',()=>{appState.page=null;appState.nav='more';render();});
+  $$('[data-page]').forEach(b=>b.addEventListener('click',()=>{const next=b.dataset.page;if(next==='setup-guide')appState.guideReturn=appState.page||null;if(!appState.page)appState.pageReturnNav=appState.nav;appState.page=next;render(); if(appState.page==='archive') hydrateArchiveLabels();}));
+  $('[data-action="back-page"]')?.addEventListener('click',()=>{appState.page=null;appState.nav=appState.pageReturnNav||'more';appState.pageReturnNav=null;render();});
   $$('[data-target]').forEach(b=>b.addEventListener('click',()=>{const day=getSelectedEntry();let v=b.dataset.value; if(v==='true')v=true; else if(v==='false')v=false; else v=Number(v); setTargetValue(day,b.dataset.target,v);}));
   $$('[data-clinical-target]').forEach(b=>b.addEventListener('click',()=>{const day=getSelectedEntry();let v=b.dataset.value;if(v==='true')v=true;else if(v==='false')v=false;else v=Number(v);setClinicalValue(day,b.dataset.clinicalTarget,v);}));
   $$('[data-process-target]').forEach(b=>b.addEventListener('click',()=>setTherapyProcessValue(b.dataset.processTarget,Number(b.dataset.value))));
@@ -923,6 +987,9 @@ async function handleAction(a,b){
   if(a==='review-week-setup'){appState.modal=null;appState.page='week-setup';appState.nav='more';render();return;}
   if(a==='keep-week-setup'||a==='finish-week-setup'){const w=appState.currentWeek;w.setupStatus='confirmed';w.setupConfirmedAt=new Date().toISOString();queueSaveWeek();appState.modal=null;if(a==='finish-week-setup'){appState.page=null;appState.nav='today';}render();return;}
   if(a==='close-modal'){appState.modal=null;render({preserveScroll:true});return;}
+  if(a==='open-guided-lkm'){appState.modal=null;appState.pageReturnNav=appState.nav;appState.page='guided-practices';render();return;}
+  if(a==='import-guided-lkm'){pickGuidedLkmFile();return;}
+  if(a==='remove-guided-lkm'){await removeGuidedLkmAudio();return;}
   if(a==='other-skill'){appState.modal={type:'other-skill'};render({preserveScroll:true});return;}
   if(a==='go-se'){appState.nav='se';appState.page=null;render();return;}
   if(a==='add-event'){appState.modal={type:'event'};render({preserveScroll:true});return;}
@@ -958,6 +1025,35 @@ async function handleAction(a,b){
 }
 function completeDay(d){d.completed=true;d.completedAt=new Date().toISOString();d.modifiedAt=d.completedAt;queueSaveWeek();appState.modal=null;render({preserveScroll:true});}
 
+function pickGuidedLkmFile(){
+  const input=document.createElement('input');
+  input.type='file';
+  input.accept='audio/*,.mp3,.m4a';
+  input.onchange=async()=>{
+    const file=input.files?.[0]; if(!file) return;
+    const looksAudio=(file.type||'').startsWith('audio/') || /\.(mp3|m4a|mp4|aac|wav|ogg)$/i.test(file.name||'');
+    if(!looksAudio){ alert('Choose an audio file such as MP3 or M4A.'); return; }
+    try{
+      const media={blob:file,name:file.name||'Loving Kindness Meditation',type:file.type||'audio/mpeg',size:file.size||0,addedAt:new Date().toISOString()};
+      await idbPut('media',GUIDED_LKM_KEY,media);
+      await loadGuidedAudioState();
+      appState.page='guided-practices';
+      render();
+    }catch(e){
+      alert(`Audio could not be saved on this device: ${e.message||e}`);
+    }
+  };
+  input.click();
+}
+async function removeGuidedLkmAudio(){
+  if(!appState.guidedAudio?.present) return;
+  if(!confirm('Remove the imported Loving Kindness audio from this device?')) return;
+  await idbDelete('media',GUIDED_LKM_KEY);
+  revokeGuidedAudioUrl();
+  appState.guidedAudio=emptyGuidedAudio();
+  render();
+}
+
 async function deleteArchivedWeek(id){
   if(!id || id===appState.currentWeek.id){alert('The current therapy week cannot be deleted.');return;}
   await appState.saveChain;
@@ -989,7 +1085,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.2').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.4').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 

@@ -144,3 +144,23 @@ th:first-child, td:first-child { text-align:left; position:sticky; left:0; backg
 .guide-list { margin:8px 0 10px 20px; padding:0; }
 .guide-list li { margin:7px 0; line-height:1.45; }
 .guide-example { margin:10px 0; padding:10px 11px; border:1px solid var(--line); border-radius:10px; background:#f8fafc; font-size:13px; line-height:1.45; }
+
+/* 0.5.4 Home + Guided Practices */
+.bottom-nav-inner { grid-template-columns:repeat(5,1fr); }
+.nav-btn { font-size:11px; white-space:nowrap; padding-left:2px; padding-right:2px; }
+.home-summary-date { font-size:18px; font-weight:750; margin-bottom:4px; }
+.home-status-complete { color:var(--accent); }
+.home-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:12px 0 2px; }
+.home-tile { min-height:108px; border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); padding:14px; color:var(--text); text-align:left; display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; }
+.home-tile strong { font-size:16px; line-height:1.2; }
+.home-tile span { margin-top:7px; color:var(--muted); font-size:12px; line-height:1.4; font-weight:500; }
+.home-tile:active { background:var(--accent-soft); border-color:#c7d8e8; }
+.guided-copy { margin:0 0 12px; line-height:1.5; }
+.guided-audio { width:100%; margin:4px 0 6px; }
+.guided-audio-meta { overflow-wrap:anywhere; }
+.guided-audio-actions { margin-top:12px; }
+.guided-storage-note { margin-top:14px; line-height:1.45; }
+@media (max-width:360px) {
+  .home-grid { grid-template-columns:1fr; }
+  .nav-btn { font-size:10px; }
+}
