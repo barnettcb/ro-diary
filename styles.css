@@ -237,3 +237,20 @@ html, body, #app {
 
 .menu-list .btn { background: #f6f9fb; }
 .menu-list .btn:active { background: #e2edf6; }
+
+
+/* 0.5.6 review clarity */
+.rating-key {
+  margin: 12px 0;
+  padding: 11px 12px;
+  border: 1px solid #c8d7e4;
+  border-radius: 11px;
+  background: #eef5fb;
+  color: #334d63;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.rating-key-scale { margin-top: 4px; color: var(--muted); font-size: 12px; }
+@media print {
+  .report-rating-key { margin: 5px 0 7px; font-size: 8px; line-height: 1.3; }
+}

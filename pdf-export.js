@@ -91,6 +91,10 @@ function buildPdfBytes(report){
   const cWidths=Array(7).fill(CONTENT_W/7);
   p.table(completionHeaders,[ (report.completion||[]).map(x=>x.status) ],cWidths,{fontSize:7.3,headerFontSize:7.2});
 
+  p.ensure(32);
+  p.text(`Target rating key: ${report.ratingKeySummary||'Numeric targets use 0-5.'}`,{size:8.3,bold:true,lineHeight:10});
+  if(report.ratingKey?.length)p.text(report.ratingKey.join(' | '),{size:7.8,maxWidth:CONTENT_W,lineHeight:10,gap:5});
+
   const ratingWidths=[174,...Array(7).fill((CONTENT_W-174)/7)];
   const dayHeaders=['Target',...(report.dayHeaders||[])];
   if(report.clinicalEnabled){

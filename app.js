@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.5-beta';
+const APP_VERSION = '0.5.6-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -253,6 +253,7 @@ let appState = {
   modal: null,
   currentPromptId: null,
   seCategory: 'all',
+  reviewEventFilter: 'all',
   hiddenAt: null,
   saveChain: Promise.resolve(),
   saveError: null,
@@ -695,15 +696,25 @@ function renderSE(){ const p=promptById(appState.currentPromptId)||choosePrompt(
 
 function weekDates(w){ return Object.keys(w.days).sort(); }
 function renderRatingsTable(targets,w){ const dates=weekDates(w); return `<div class="table-wrap"><table><thead><tr><th>Target</th>${dates.map(d=>`<th>${fmtDay(d)}</th>`).join('')}</tr></thead><tbody>${targets.map(t=>`<tr><td title="${escapeHtml(t.label)}">${escapeHtml(t.label)}</td>${dates.map(d=>{const v=targetValue(w.days[d],t.id); return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`;}
-function renderReview(){const w=appState.currentWeek; const dates=weekDates(w); const flagged=dates.flatMap(d=>w.days[d].events.filter(e=>e.discuss).map(e=>({...e,date:d}))); const skillMap={}; dates.forEach(d=>w.days[d].skills.forEach(s=>(skillMap[s]??=[]).push(fmtDay(d))));
+function renderTargetRatingKey(){return `<div class="rating-key"><div><strong>Target rating key:</strong> Numeric targets use 0–5. Y/N targets indicate whether the behavior occurred.</div><div class="rating-key-scale">${SCALE_ANCHORS.map(a=>escapeHtml(a)).join(' · ')}</div></div>`;}
+function weekEvents(w){return weekDates(w).flatMap(d=>w.days[d].events.map(e=>({...e,date:d})));}
+function renderReviewEvents(w){
+  const all=weekEvents(w); const filter=appState.reviewEventFilter==='discuss'?'discuss':'all';
+  const shown=filter==='discuss'?all.filter(e=>e.discuss):all;
+  const flaggedCount=all.filter(e=>e.discuss).length;
+  const empty=filter==='discuss'?'No events flagged for discussion.':'No notes or events recorded this week.';
+  return `<section class="card"><div class="card-header"><div class="section-kicker">Notes / Events</div></div><div class="card-body"><div class="field" style="margin-top:0"><label>Show</label><select id="review-event-filter"><option value="all" ${filter==='all'?'selected':''}>All Notes / Events (${all.length})</option><option value="discuss" ${filter==='discuss'?'selected':''}>Discuss in Therapy Only (${flaggedCount})</option></select></div>${shown.length?shown.map(e=>`<div class="event-card"><div class="event-context">${fmtDay(e.date)} ${fmtDate(e.date,{month:'numeric',day:'numeric'})}${e.context?` — ${escapeHtml(e.context)}`:''}</div>${e.note?`<div class="event-note">${escapeHtml(e.note)}</div>`:''}${e.discuss?'<div class="flag">★ Discuss in Therapy</div>':''}</div>`).join(''):`<div class="subtle">${empty}</div>`}</div></section>`;
+}
+function renderReview(){const w=appState.currentWeek; const dates=weekDates(w); const skillMap={}; dates.forEach(d=>w.days[d].skills.forEach(s=>(skillMap[s]??=[]).push(fmtDay(d))));
  const needsBackup=!appState.profile.lastBackupAt || (Date.now()-new Date(appState.profile.lastBackupAt).getTime()>7*86400000);
  return `<h1 class="page-title">Weekly Review</h1><div class="subtle">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>${needsBackup?'<div class="notice">A current encrypted backup is recommended this week.</div>':''}
  <section class="card"><div class="card-header"><div class="section-kicker">Completion</div></div><div class="card-body"><div class="btn-row">${dates.map(d=>`<span class="status-pill">${fmtDay(d)} ${w.days[d].completed?'✓':'○'}</span>`).join('')}</div></div></section>
+ ${renderTargetRatingKey()}
  ${w.riskTrackingEnabled?`<section class="card"><div class="card-header"><div class="section-kicker">Risk, medication & substance</div></div><div class="card-body"><div class="table-wrap"><table><thead><tr><th>Field</th>${dates.map(d=>`<th>${fmtDay(d)}</th>`).join('')}</tr></thead><tbody>${CLINICAL_DAILY_FIELDS.map(f=>`<tr><td>${escapeHtml(f.label)}</td>${dates.map(d=>{const v=clinicalValue(w.days[d],f.id);return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div></div></section>`:''}
  <section class="card"><div class="card-header"><div class="section-kicker">Private behaviors, emotions & urges</div></div><div class="card-body">${renderRatingsTable(w.privateTargets,w)}</div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Social signals & overt behaviors</div></div><div class="card-body">${renderRatingsTable(w.socialTargets,w)}</div></section>
  ${renderProcessRatings(w)}
- <section class="card"><div class="card-header"><div class="section-kicker">Discuss in Therapy</div></div><div class="card-body">${flagged.length?flagged.map(e=>`<div class="event-card"><div class="event-context">${fmtDay(e.date)} — ${escapeHtml(e.context||'Event')}</div><div class="event-note">${escapeHtml(e.note||'')}</div></div>`).join(''):'<div class="subtle">No events flagged.</div>'}</div></section>
+ ${renderReviewEvents(w)}
  <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body">${Object.keys(skillMap).length?Object.entries(skillMap).map(([s,ds])=>`<div class="list-row"><strong>${escapeHtml(skillName(s))}</strong><span class="small">${ds.join(', ')}</span></div>`).join(''):'<div class="subtle">No skills recorded.</div>'}</div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry</div></div><div class="card-body"><div><strong>Weekly focus:</strong><br>${escapeHtml(w.weeklySEFocus||'—')}</div><div style="margin-top:10px"><strong>Saved prompts:</strong> ${w.savedSEPrompts.length}</div><div style="margin-top:6px"><strong>Questions discovered:</strong> ${(w.newSEQuestions||[]).length}</div></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Week context</div></div><div class="card-body"><div><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div style="margin-top:8px"><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${w.majorOCThemeEnabled?`<div style="margin-top:8px"><strong>Major OC Theme:</strong> ${escapeHtml(w.majorOCTheme||'—')}</div>`:''}</div></section>
@@ -863,6 +874,7 @@ function renderPrintReport(){
   return `<div class="print-report">
     <div class="report-heading"><div><h1>RO-DBT Diary — ${escapeHtml(appState.profile.pdfName||'')}</h1><div class="report-meta">Therapy week ${fmtDate(w.startDate,{month:'short',day:'numeric',year:'numeric'})} – ${fmtDate(w.endDate,{month:'short',day:'numeric',year:'numeric'})}</div></div></div>
     <h2>Completion</h2>${renderPrintCompletion(w)}
+    <div class="report-context-row report-rating-key"><strong>Target rating key:</strong> Numeric targets use 0–5; Y/N targets indicate whether the behavior occurred.<br>${SCALE_ANCHORS.map(a=>escapeHtml(a)).join(' · ')}</div>
     <h2>Private Behaviors, Emotions & Urges</h2>${renderPrintRatingsTable(w.privateTargets,w)}
     <h2>Social Signals & Overt Behaviors</h2>${renderPrintRatingsTable(w.socialTargets,w)}
     <h2>Skills Used</h2>${renderPrintSkills(w)}
@@ -911,6 +923,7 @@ function bindApp(){
   $('#pdf-name')?.addEventListener('change',e=>{appState.profile.pdfName=e.target.value;queueSaveProfile();});
   $('#week-start')?.addEventListener('change',e=>{appState.profile.therapyWeekStart=Number(e.target.value);queueSaveProfile();});
   $('#se-category')?.addEventListener('change',e=>{appState.seCategory=e.target.value;appState.currentPromptId=null;choosePrompt();render();});
+  $('#review-event-filter')?.addEventListener('change',e=>{appState.reviewEventFilter=e.target.value==='discuss'?'discuss':'all';render({preserveScroll:true});});
 }
 function toggleSkill(id,checked,doRender=true){const d=getSelectedEntry(); if(checked&&!d.skills.includes(id))d.skills.push(id); if(!checked)d.skills=d.skills.filter(x=>x!==id); d.modifiedAt=new Date().toISOString(); if(d.completed){d.completed=false;d.completedAt=null;} queueSaveWeek(); if(doRender)updateCompletionUi(d);}
 function toggleFocusSkill(id,checked){const w=appState.currentWeek;if(checked){if(w.focusSkills.length>=5){alert('Choose up to five focus skills.');render();return;} if(!w.focusSkills.includes(id))w.focusSkills.push(id);}else w.focusSkills=w.focusSkills.filter(x=>x!==id);queueSaveWeek();render();}
@@ -937,6 +950,8 @@ function buildPdfReportData(){
     week:`Therapy week ${fmtDate(w.startDate,{month:'short',day:'numeric',year:'numeric'})} – ${fmtDate(w.endDate,{month:'short',day:'numeric',year:'numeric'})}`,
     completion,
     dayHeaders:completion.map(x=>`${x.day} ${x.date}`),
+    ratingKeySummary:'Numeric targets use 0–5. Y/N targets indicate whether the behavior occurred.',
+    ratingKey:[...SCALE_ANCHORS],
     privateRows:ratingRows(w.privateTargets),
     socialRows:ratingRows(w.socialTargets),
     clinicalEnabled:!!w.riskTrackingEnabled,

@@ -1,12 +1,12 @@
-const CACHE='ro-diary-v0.5.5-beta';
+const CACHE='ro-diary-v0.5.6-beta';
 const ASSETS=[
   './',
-  './styles.css?v=0.5.5',
-  './pdf-export.js?v=0.5.5',
-  './app.js?v=0.5.5',
-  './manifest.webmanifest?v=0.5.5',
-  './icons/icon-192.png?v=0.5.5',
-  './icons/icon-512.png?v=0.5.5'
+  './styles.css?v=0.5.6',
+  './pdf-export.js?v=0.5.6',
+  './app.js?v=0.5.6',
+  './manifest.webmanifest?v=0.5.6',
+  './icons/icon-192.png?v=0.5.6',
+  './icons/icon-512.png?v=0.5.6'
 ];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));
