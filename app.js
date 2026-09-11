@@ -1,32 +1,37 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.8-beta';
+const APP_VERSION = '0.5.9-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
 const PIN_ITERATIONS = 220000;
 const BACKUP_ITERATIONS = 600000;
 const AUTO_LOCK_MS = 5 * 60 * 1000;
-const WEEK_START_DAY = 4; // Thursday
+const WEEK_START_DAY = 4; // Legacy/fallback only; new users choose this during Initial Setup
 const GUIDED_LKM_KEY = 'guided:lkm';
 
-const DEFAULT_PRIVATE_TARGETS = [
-  ['avoid-escape','Avoid / Escape Urge','Urge to get away from, end, postpone, or avoid an uncomfortable task, interaction, feeling, or situation.'],
-  ['irritation','Irritation','Feeling annoyed, aggravated, frustrated, impatient, or angry. Rate the private experience, not whether it was expressed outwardly.'],
-  ['activation','Physical Activation','Noticeable bodily activation such as tension, tightness, heat, faster speech, restlessness, or other signs of arousal.'],
-  ['defend-explain','Defend / Explain Urge','Urge to defend yourself, explain your reasoning, correct the record, rebut, or prove a point.'],
-  ['shame','Shame / Embarrassment','Feeling exposed, ashamed, embarrassed, inadequate, or socially diminished.'],
-  ['criticism','Criticism / Judgment','Experience of interpreting an interaction as criticism, negative judgment, disapproval, or being viewed unfavorably.'],
-  ['appease','Appease / Agree Urge','Urge to agree, placate, smooth over, or give in mainly to reduce tension or avoid conflict.']
-].map(([id,label,definition], order) => ({id,label,definition,type:'scale',order}));
+const DEFAULT_PRIVATE_TARGETS = [];
+const DEFAULT_SOCIAL_TARGETS = [];
 
-const DEFAULT_SOCIAL_TARGETS = [
-  ['defensive-explaining','Defensive Explaining','Explaining, correcting, rebutting, or giving more detail in a way that functions as outward defensiveness.'],
-  ['withdrawal','Withdrawal / Shutdown','Withdrawing, shutting down, ending engagement, becoming unavailable, or signaling that you want the interaction to stop.'],
-  ['forceful-tone','Forceful Tone','Irritated, sharp, louder, faster, clipped, forceful, or otherwise tense delivery that may signal hostility or dominance.'],
-  ['conflict-appeasing','Conflict Appeasing','Outwardly agreeing, yielding, placating, or signaling agreement mainly to reduce conflict rather than from genuine agreement.']
-].map(([id,label,definition], order) => ({id,label,definition,type:'scale',order}));
+// Optional examples shown during first-time setup. Nothing is preselected.
+// These are examples of target types/behaviors described in Lynch's RO-DBT
+// diary-card and treatment-targeting material, not universal targets.
+const INITIAL_PRIVATE_SUGGESTIONS = [
+  {id:'anger-annoyance',label:'Anger / Annoyance',definition:'Feeling angry, annoyed, irritated, or frustrated.'},
+  {id:'resentment',label:'Resentment',definition:'Feeling resentful or bitter, including feeling unappreciated or unrecognized.'},
+  {id:'shame-embarrassment',label:'Shame / Embarrassment',definition:'Feeling ashamed, embarrassed, exposed, or socially diminished.'},
+  {id:'physical-tension',label:'Tension / Physical Activation',definition:'Noticeable bodily tension, tightness, heat, agitation, or other activation.'},
+  {id:'unappreciated-thoughts',label:'Thoughts of Being Unappreciated',definition:'Thoughts or interpretations about being unappreciated, unrecognized, or taken for granted.'}
+];
+
+const INITIAL_SOCIAL_SUGGESTIONS = [
+  {id:'walking-away',label:'Walking Away / Leaving',definition:'Abruptly leaving or ending an interaction during conflict or discomfort.'},
+  {id:'going-quiet',label:'Going Quiet / Silence',definition:'Becoming silent or going quiet around others, such as when annoyed or upset.'},
+  {id:'telling-others',label:'Telling Others What to Do',definition:'Directing or bossing others in a way that may signal dominance or rigidity.'},
+  {id:'pretending-fine',label:'Pretending / “I’m Fine”',definition:'Saying or signaling that you are fine when that does not match your private experience.'},
+  {id:'flat-stony',label:'Flat / Stony Expression',definition:'A flat or stony facial expression that may signal distance, resistance, or pushback.'}
+];
 
 const SCALE_ANCHORS = [
   '0 — Not present',
@@ -92,9 +97,9 @@ const SKILLS = [
   {id:'fixed-fatalistic', name:'Fixed / Fatalistic Mind Skills', lesson:11, reference:'Legacy combined entry • Lesson 11', purpose:'Legacy combined label retained so older diary entries continue to display correctly.', useWhen:'Use the more specific Fixed Mind or Fatalistic Mind skills above for new entries.', steps:['This combined item is retained for historical compatibility.']}
 ];
 
-const DEFAULT_FOCUS_SKILLS = ['definitely','big3','lkm','sage','urge-surfing'];
-const DEFAULT_SE_FOCUS = 'When I notice the urge to avoid doing my diary card, what do I notice as I sit with and surf the urge instead of immediately acting on it?';
-const DEFAULT_HOMEWORK = 'Lesson 9 — Worksheet 9.A: Practicing Enhancing Facial Expressions';
+const DEFAULT_FOCUS_SKILLS = [];
+const DEFAULT_SE_FOCUS = '';
+const DEFAULT_HOMEWORK = '';
 
 const LEGACY_SE_CATEGORIES = [
   ['all','All Topics'],
@@ -376,6 +381,7 @@ let appState = {
   saveError: null,
   busy: false,
   guidedAudio: {present:false,name:'',type:'',size:0,addedAt:null,blob:null,url:null},
+  initialSetupStep: 1,
 };
 
 const $ = (sel, root=document) => root.querySelector(sel);
@@ -519,36 +525,47 @@ async function unlockVault(pin) {
   }
 }
 
-function buildNewWeek(startDate, previous=null) {
+function buildNewWeek(startDate, previous=null, options={}) {
+  const blank=!!options.blank;
   const start=typeof startDate==='string'?parseDateOnly(startDate):startDate; const end=addDays(start,6);
   const id=uid(); const days={}; const now=new Date().toISOString();
   for(let i=0;i<7;i++){ const ds=toDateOnly(addDays(start,i)); days[ds]={date:ds,ratings:{},clinical:blankClinicalDaily(),skills:[],events:[],completed:false,completedAt:null,modifiedAt:now}; }
   return {
     id,startDate:toDateOnly(start),endDate:toDateOnly(end),
-    privateTargets:structuredClone(previous?.privateTargets || DEFAULT_PRIVATE_TARGETS),
-    socialTargets:structuredClone(previous?.socialTargets || DEFAULT_SOCIAL_TARGETS),
-    focusSkills:[...(previous?.focusSkills || DEFAULT_FOCUS_SKILLS)],
-    weeklySEFocus:previous?.weeklySEFocus || DEFAULT_SE_FOCUS,
-    homework:previous?.homework || DEFAULT_HOMEWORK,
-    valuedGoal:previous?.valuedGoal || '',
-    majorOCTheme:'', majorOCThemeEnabled:!!previous?.majorOCThemeEnabled,
-    therapyProcessEnabled:!!previous?.therapyProcessEnabled, therapyProcess:blankTherapyProcess(),
-    riskTrackingEnabled:!!previous?.riskTrackingEnabled,
+    privateTargets:blank?[]:structuredClone(previous?.privateTargets || DEFAULT_PRIVATE_TARGETS),
+    socialTargets:blank?[]:structuredClone(previous?.socialTargets || DEFAULT_SOCIAL_TARGETS),
+    focusSkills:blank?[]:[...(previous?.focusSkills || DEFAULT_FOCUS_SKILLS)],
+    weeklySEFocus:blank?'':(previous?.weeklySEFocus || DEFAULT_SE_FOCUS),
+    homework:blank?'':(previous?.homework || DEFAULT_HOMEWORK),
+    valuedGoal:blank?'':(previous?.valuedGoal || ''),
+    majorOCTheme:'', majorOCThemeEnabled:blank?false:!!previous?.majorOCThemeEnabled,
+    therapyProcessEnabled:blank?false:!!previous?.therapyProcessEnabled, therapyProcess:blankTherapyProcess(),
+    riskTrackingEnabled:blank?false:!!previous?.riskTrackingEnabled,
     savedSEPrompts:[], newSEQuestions:[], days, archived:false,
-    setupStatus:previous?'pending':'confirmed', setupConfirmedAt:previous?null:now,
+    setupStatus:blank?'initial-pending':(previous?'pending':'confirmed'), setupConfirmedAt:(blank||previous)?null:now,
     createdAt:now,modifiedAt:now
   };
 }
 
+function resetInitialWeekDates(startDay){
+  const w=appState.currentWeek; if(!w || appState.profile?.initialSetupComplete!==false) return;
+  const start=getWeekStart(new Date(),startDay); const end=addDays(start,6); const days={}; const now=new Date().toISOString();
+  for(let i=0;i<7;i++){const ds=toDateOnly(addDays(start,i));days[ds]={date:ds,ratings:{},clinical:blankClinicalDaily(),skills:[],events:[],completed:false,completedAt:null,modifiedAt:now};}
+  w.startDate=toDateOnly(start);w.endDate=toDateOnly(end);w.days=days;w.modifiedAt=now;
+  appState.selectedDate=days[todayStr()]?todayStr():Object.keys(days).sort()[0];
+}
+
 async function initializeFreshData() {
-  const start=getWeekStart(new Date(),WEEK_START_DAY); const week=buildNewWeek(start);
+  // A new vault starts with no personal targets, weekly assignment, focus skills,
+  // name, or therapy-week assumption. The user chooses these in Initial Setup.
+  const start=new Date(); const week=buildNewWeek(start,null,{blank:true});
   const profile={
-    version:3,therapyWeekStart:WEEK_START_DAY,currentWeekId:week.id,weekIds:[week.id],
-    pdfName:'Brooke',lastBackupAt:null,createdAt:new Date().toISOString(),modifiedAt:new Date().toISOString(),
+    version:4,initialSetupComplete:false,therapyWeekStart:null,currentWeekId:week.id,weekIds:[week.id],
+    pdfName:'',lastBackupAt:null,createdAt:new Date().toISOString(),modifiedAt:new Date().toISOString(),
     favoritePromptIds:[],notUsefulPromptIds:[],recentPromptIds:[],myQuestions:[]
   };
   await saveRecord('profile',profile); await saveRecord(`week:${week.id}`,week);
-  appState.profile=profile; appState.currentWeek=week; appState.selectedDate=todayStr();
+  appState.profile=profile; appState.currentWeek=week; appState.selectedDate=todayStr();appState.initialSetupStep=1;appState.page='initial-setup';
 }
 
 async function loadAppData() {
@@ -561,7 +578,8 @@ async function loadAppData() {
   let week=await loadRecord(`week:${profile.currentWeekId}`);
   const today=new Date(); const todayKey=todayStr(); const expectedStart=getWeekStart(today,profile.therapyWeekStart ?? WEEK_START_DAY);
   let saveProfileNeeded=false; let saveWeekNeeded=false;
-  if(!week || parseDateOnly(week.endDate) < parseDateOnly(todayKey)) {
+  const onboardingInProgress=profile.initialSetupComplete===false;
+  if(!week || (!onboardingInProgress && parseDateOnly(week.endDate) < parseDateOnly(todayKey))) {
     const prev=week || (profile.weekIds.length ? await loadRecord(`week:${profile.weekIds[profile.weekIds.length-1]}`) : null);
     if(prev) { prev.archived=true; prev.modifiedAt=new Date().toISOString(); await saveRecord(`week:${prev.id}`,prev); }
     week=buildNewWeek(expectedStart,prev);
@@ -576,22 +594,23 @@ async function loadAppData() {
   else {for(const f of THERAPY_PROCESS_FIELDS){if(!Object.prototype.hasOwnProperty.call(week.therapyProcess,f.id)){week.therapyProcess[f.id]=null;saveWeekNeeded=true;}}}
   if(typeof week.riskTrackingEnabled!=='boolean'){week.riskTrackingEnabled=false;saveWeekNeeded=true;}
   for(const d of Object.values(week.days)){if(!d.clinical || typeof d.clinical!=='object'){d.clinical=blankClinicalDaily();saveWeekNeeded=true;}else{for(const f of CLINICAL_DAILY_FIELDS){if(!Object.prototype.hasOwnProperty.call(d.clinical,f.id)){d.clinical[f.id]=null;saveWeekNeeded=true;}}}}
-  // One-time upgrade: prompt to review the current week's copied setup without changing any diary data.
-  if((profile.version||1)<2){
-    profile.version=3; saveProfileNeeded=true;
+  // Existing profiles predate the first-time setup wizard. Mark them complete
+  // so an upgrade never sends an established diary through onboarding.
+  const originalProfileVersion=profile.version||1;
+  if(typeof profile.initialSetupComplete!=='boolean'){profile.initialSetupComplete=true;saveProfileNeeded=true;}
+  if(originalProfileVersion<2){
     if(!week.setupStatus){week.setupStatus='pending';week.setupConfirmedAt=null;saveWeekNeeded=true;}
-  } else {
-    if((profile.version||1)<3){profile.version=3;saveProfileNeeded=true;}
-    if(!week.setupStatus){
-      week.setupStatus='confirmed';week.setupConfirmedAt=week.createdAt||new Date().toISOString();saveWeekNeeded=true;
-    }
+  } else if(!week.setupStatus){
+    week.setupStatus='confirmed';week.setupConfirmedAt=week.createdAt||new Date().toISOString();saveWeekNeeded=true;
   }
+  if(originalProfileVersion<4){profile.version=4;saveProfileNeeded=true;}
   if(saveWeekNeeded) await saveRecord(`week:${week.id}`,week);
   if(saveProfileNeeded) await saveRecord('profile',profile);
   appState.currentWeek=week;
   const eligible=Object.keys(week.days).sort().filter(d=>parseDateOnly(d)<=parseDateOnly(todayKey));
   appState.selectedDate=week.days[todayKey]?todayKey:(eligible.at(-1)||Object.keys(week.days).sort()[0]);
-  if(week.setupStatus==='pending') appState.modal={type:'week-start'};
+  if(profile.initialSetupComplete===false){appState.page='initial-setup';appState.nav='home';appState.initialSetupStep=1;appState.modal=null;}
+  else if(week.setupStatus==='pending') appState.modal={type:'week-start'};
 }
 
 function queueSaveWeek() {
@@ -605,7 +624,7 @@ function queueSaveProfile() {
 
 function lockApp() {
   revokeGuidedAudioUrl();
-  vaultKey=null; appState.locked=true; appState.pinBuffer=''; appState.pinError=''; appState.profile=null; appState.currentWeek=null; appState.selectedDate=null; appState.modal=null; appState.page=null; appState.pageReturnNav=null; appState.nav='home'; appState.guidedAudio=emptyGuidedAudio(); render();
+  vaultKey=null; appState.locked=true; appState.pinBuffer=''; appState.pinError=''; appState.profile=null; appState.currentWeek=null; appState.selectedDate=null; appState.modal=null; appState.page=null; appState.pageReturnNav=null; appState.nav='home'; appState.initialSetupStep=1; appState.guidedAudio=emptyGuidedAudio(); render();
 }
 
 function selectableDates(w=appState.currentWeek){
@@ -760,11 +779,73 @@ function renderLock() {
   </div></div>`;
 }
 
+function initialWeekDayOptions(selected){
+  return [[0,'Sunday'],[1,'Monday'],[2,'Tuesday'],[3,'Wednesday'],[4,'Thursday'],[5,'Friday'],[6,'Saturday']]
+    .map(([v,n])=>`<option value="${v}" ${selected===v?'selected':''}>${n}</option>`).join('');
+}
+function initialSuggestionSelected(kind,id){
+  const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;
+  return arr.some(t=>t.sourceSuggestionId===id);
+}
+function renderInitialSuggestions(items,kind){
+  return `<div class="setup-suggestions">${items.map(x=>`<label class="setup-suggestion"><input type="checkbox" data-initial-suggestion="${escapeHtml(x.id)}" data-kind="${kind}" ${initialSuggestionSelected(kind,x.id)?'checked':''}><span><strong>${escapeHtml(x.label)}</strong><small>${escapeHtml(x.definition)}</small></span></label>`).join('')}</div>`;
+}
+function renderInitialTargetList(targets,kind){
+  if(!targets.length) return '<div class="subtle small" style="margin-bottom:10px">Nothing selected yet. You can add targets now or return to Week Setup later.</div>';
+  return renderTargetEditors(targets,kind);
+}
+function renderInitialSetup(){
+  const w=appState.currentWeek,p=appState.profile,step=Math.min(5,Math.max(1,appState.initialSetupStep||1));
+  const progress=`<div class="initial-progress"><span>Initial Setup</span><strong>Step ${step} of 5</strong></div>`;
+  const back=step>1?'<button class="btn" data-action="initial-setup-back">Back</button>':'';
+  const next=step<5?'<button class="btn primary" data-action="initial-setup-next">Continue</button>':'';
+  let body='';
+  if(step===1){
+    const selected=Number.isInteger(p.therapyWeekStart)?p.therapyWeekStart:null;
+    const preview=selected!==null?`<div class="notice success-notice">Your current therapy week will be <strong>${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</strong>.</div>`:'';
+    body=`<h1 class="page-title">Set Up Your Diary</h1><div class="subtle">A few choices will create your first local diary card. Nothing here is sent anywhere.</div>
+      <section class="card"><div class="card-header"><div class="section-kicker">Basics</div><div class="section-title">Your therapy week</div></div><div class="card-body">
+        <div class="field"><label>Name or initials for therapist PDFs (optional)</label><input id="initial-pdf-name" value="${escapeHtml(p.pdfName||'')}" placeholder="Name or initials"></div>
+        <div class="field"><label>What day does your therapy week start?</label><select id="initial-week-start"><option value="">Choose a day</option>${initialWeekDayOptions(selected)}</select><div class="subtle small">Choose the day your weekly diary card begins. You can change this later for future weeks.</div></div>${preview}
+        <div class="notice"><strong>Already use RO-DBT Diary?</strong> If you have an encrypted backup from another installation, you can restore it instead of building a new first week.</div><button class="btn wide" data-action="restore">Restore Existing Backup</button>
+      </div></section>`;
+  } else if(step===2){
+    body=`<h1 class="page-title">Social Signals & Overt Behaviors</h1><div class="subtle">Choose only targets that are useful to your treatment. The examples below start unselected.</div>
+      <section class="card"><div class="card-header"><div class="section-kicker">Optional examples</div><div class="section-title">Tap any that fit</div></div><div class="card-body">${renderInitialSuggestions(INITIAL_SOCIAL_SUGGESTIONS,'social')}<div class="subtle small" style="margin-top:10px">These are examples, not a standard list of targets. Your therapist may use different language or targets.</div></div></section>
+      <section class="card"><div class="card-header"><div class="section-kicker">Your social targets</div></div><div class="card-body">${renderInitialTargetList(w.socialTargets,'social')}<button class="btn soft wide" data-action="add-target" data-kind="social">+ Add My Own Social Target</button></div></section>`;
+  } else if(step===3){
+    body=`<h1 class="page-title">Private Behaviors, Emotions & Urges</h1><div class="subtle">These are private experiences you and your therapist decide are useful to monitor.</div>
+      <section class="card"><div class="card-header"><div class="section-kicker">Optional examples</div><div class="section-title">Tap any that fit</div></div><div class="card-body">${renderInitialSuggestions(INITIAL_PRIVATE_SUGGESTIONS,'private')}<div class="subtle small" style="margin-top:10px">These examples are optional. Leave them unselected if they are not part of your treatment focus.</div></div></section>
+      <section class="card"><div class="card-header"><div class="section-kicker">Your private targets</div></div><div class="card-body">${renderInitialTargetList(w.privateTargets,'private')}<button class="btn soft wide" data-action="add-target" data-kind="private">+ Add My Own Private Target</button></div></section>`;
+  } else if(step===4){
+    body=`<h1 class="page-title">Weekly Focus</h1><div class="subtle">Set only what applies to this week. All of these can be updated later.</div>
+      <section class="card"><div class="card-header"><div class="section-kicker">Focus skills</div></div><div class="card-body"><div class="checkbox-list">${SKILLS.filter(s=>s.id!=='fixed-fatalistic').map(s=>`<label class="check-row"><input type="checkbox" data-focus-skill="${s.id}" ${w.focusSkills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><div class="subtle small" style="margin-top:8px">Choose up to five, or leave this blank until you know what you are practicing.</div></div></section>
+      <section class="card"><div class="card-body"><div class="field"><label>Weekly self-enquiry focus</label><textarea data-week-field="weeklySEFocus" placeholder="Leave blank if none is assigned yet">${escapeHtml(w.weeklySEFocus||'')}</textarea></div><div class="field"><label>Skills-class homework</label><input data-week-field="homework" value="${escapeHtml(w.homework||'')}" placeholder="Leave blank if none"></div><div class="field"><label>Valued goal (optional)</label><input data-week-field="valuedGoal" value="${escapeHtml(w.valuedGoal||'')}"></div></div></section>`;
+  } else {
+    const targetNames=arr=>arr.length?arr.map(t=>escapeHtml(t.label)).join(', '):'None selected yet';
+    const skillNames=w.focusSkills.length?w.focusSkills.map(skillName).map(escapeHtml).join(', '):'None selected';
+    const weekStartName=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][p.therapyWeekStart]||'Not set';
+    const noTargets=!w.socialTargets.length&&!w.privateTargets.length?'<div class="notice">No targets are selected yet. You can still start the week and add targets later in Week Setup.</div>':'';
+    body=`<h1 class="page-title">Review & Start</h1><div class="subtle">Check your first weekly setup. You can change these items later without recreating the app.</div>
+      <section class="card"><div class="card-header"><div class="section-kicker">Optional RO-DBT fields</div></div><div class="card-body"><div class="checkbox-list">
+        <label class="check-row"><input type="checkbox" data-week-toggle="majorOCThemeEnabled" ${w.majorOCThemeEnabled?'checked':''}><span>Major OC Theme</span></label>
+        <label class="check-row"><input type="checkbox" data-week-toggle="therapyProcessEnabled" ${w.therapyProcessEnabled?'checked':''}><span>Therapy Alliance / Process Ratings</span></label>
+        <label class="check-row"><input type="checkbox" data-week-toggle="riskTrackingEnabled" ${w.riskTrackingEnabled?'checked':''}><span>Risk / Medication / Substance Fields</span></label>
+      </div>${w.majorOCThemeEnabled?`<div class="field"><label>Major OC Theme this week</label><input data-week-field="majorOCTheme" value="${escapeHtml(w.majorOCTheme||'')}"></div>`:''}<div class="subtle small" style="margin-top:10px">These are off by default. Turn them on only when they are relevant to your treatment.</div></div></section>
+      <section class="card"><div class="card-header"><div class="section-kicker">First week</div><div class="section-title">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div></div><div class="card-body initial-review">
+        <div><strong>PDF name:</strong> ${escapeHtml(p.pdfName||'Not set')}</div><div><strong>Therapy week starts:</strong> ${weekStartName}</div><div><strong>Social targets:</strong> ${targetNames(w.socialTargets)}</div><div><strong>Private targets:</strong> ${targetNames(w.privateTargets)}</div><div><strong>Focus skills:</strong> ${skillNames}</div><div><strong>Self-enquiry focus:</strong> ${escapeHtml(w.weeklySEFocus||'None')}</div><div><strong>Homework:</strong> ${escapeHtml(w.homework||'None')}</div><div><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'None')}</div>
+      </div></section>${noTargets}<section class="card"><div class="card-body"><button class="btn primary wide" data-action="finish-initial-setup">Start My First Week</button></div></section>`;
+  }
+  return `${progress}${body}<div class="initial-setup-actions">${back}${next}</div>`;
+}
+
 function renderAppShell() {
   const w=appState.currentWeek; const day=getSelectedEntry();
   const nav=appState.nav;
+  const initialSetup=appState.profile?.initialSetupComplete===false;
   let body='';
-  if(appState.page==='week-setup') body=renderWeekSetup();
+  if(initialSetup) body=renderInitialSetup();
+  else if(appState.page==='week-setup') body=renderWeekSetup();
   else if(appState.page==='setup-guide') body=renderSetupGuide();
   else if(appState.page==='archive') body=renderArchive();
   else if(appState.page==='skills') body=renderSkillsReference();
@@ -775,11 +856,11 @@ function renderAppShell() {
   else if(nav==='se') body=renderSE();
   else if(nav==='review') body=renderReview();
   else body=renderMore();
-  const title=appState.page ? ({'week-setup':'Week Setup','setup-guide':'Setup Guide','archive':'Archive','skills':'RO Skills','guided-practices':'Guided Practices','settings':'Settings'}[appState.page]) : 'RO-DBT Diary';
+  const title=initialSetup?'Initial Setup':(appState.page ? ({'week-setup':'Week Setup','setup-guide':'Setup Guide','archive':'Archive','skills':'RO Skills','guided-practices':'Guided Practices','settings':'Settings'}[appState.page]) : 'RO-DBT Diary');
   return `<div class="app-shell">
-    <header class="topbar"><div class="topbar-row"><div class="brand">${title}</div><div class="status-pill">${day?.completed?`${day.date===todayStr()?'Today':fmtDay(day.date)} complete`:'Private • Local'}</div></div></header>
+    <header class="topbar"><div class="topbar-row"><div class="brand">${title}</div><div class="status-pill">${initialSetup?'Private • Local':(day?.completed?`${day.date===todayStr()?'Today':fmtDay(day.date)} complete`:'Private • Local')}</div></div></header>
     <main class="content">${body}${appState.saveError?`<div class="notice">Save problem: ${escapeHtml(appState.saveError)}</div>`:''}</main>
-    ${appState.page?'':renderNav(nav)}
+    ${initialSetup||appState.page?'':renderNav(nav)}
   </div>`;
 }
 function renderNav(nav){ return `<nav class="bottom-nav"><div class="bottom-nav-inner">
@@ -962,7 +1043,7 @@ function renderWeekSetup(){const w=appState.currentWeek; return `<div class="btn
  </div>${w.majorOCThemeEnabled?`<div class="field"><label>Major OC Theme this week</label><input data-week-field="majorOCTheme" value="${escapeHtml(w.majorOCTheme||'')}"></div>`:''}${w.therapyProcessEnabled?'<div class="subtle small" style="margin-top:10px">Therapy-process ratings are entered from Weekly Review just prior to the session.</div>':''}${w.riskTrackingEnabled?'<div class="subtle small" style="margin-top:6px">Risk/medication/substance fields appear on each daily entry.</div>':''}</div></section>
  ${w.setupStatus==='pending'?'<section class="card"><div class="card-body"><button class="btn primary wide" data-action="finish-week-setup">Finish Week Setup</button></div></section>':''}`;}
 function renderSetupGuide(){return `<button class="btn" data-action="back-guide">← Back</button><h1 class="page-title">How to Set Up Your Diary Card</h1>
- <div class="subtle">A practical guide for choosing a small, useful card that can change as therapy changes.</div>
+ <div class="subtle">A practical guide for choosing a small, useful card that can change as therapy changes. On a brand-new installation, Initial Setup also asks which day your therapy week starts and offers unselected example targets to make the first card easier to build.</div>
  <section class="card"><div class="card-header"><div class="section-kicker">Purpose</div><div class="section-title">What the diary card is for</div></div><div class="card-body guide-copy">
    <p>Use the card to capture the week clearly enough that you and your therapist can quickly identify important patterns and events. Targets are selected to match the behaviors and experiences that are most useful to track in the current treatment focus, and they can change as therapy changes.</p>
    <p>Keep the card manageable. A smaller set of specific targets that you actually complete is more useful than a large checklist that becomes burdensome.</p>
@@ -1135,10 +1216,22 @@ function bindApp(){
   $$('[data-target-def]').forEach(el=>el.addEventListener('change',()=>updateTargetField(el.dataset.kind,el.dataset.targetDef,'definition',el.value)));
   $$('[data-target-type]').forEach(el=>el.addEventListener('change',()=>updateTargetField(el.dataset.kind,el.dataset.targetType,'type',el.value)));
   $$('[data-delete-target]').forEach(b=>b.addEventListener('click',()=>deleteTarget(b.dataset.kind,b.dataset.deleteTarget)));
+  $$('#initial-pdf-name').forEach(el=>el.addEventListener('change',e=>{appState.profile.pdfName=e.target.value.trim();queueSaveProfile();}));
+  $('#initial-week-start')?.addEventListener('change',e=>{const raw=e.target.value;if(raw===''){appState.profile.therapyWeekStart=null;queueSaveProfile();render();return;}const day=Number(raw);appState.profile.therapyWeekStart=day;resetInitialWeekDates(day);queueSaveProfile();queueSaveWeek();render();});
+  $$('[data-initial-suggestion]').forEach(el=>el.addEventListener('change',()=>toggleInitialSuggestion(el.dataset.kind,el.dataset.initialSuggestion,el.checked)));
   $('#pdf-name')?.addEventListener('change',e=>{appState.profile.pdfName=e.target.value;queueSaveProfile();});
   $('#week-start')?.addEventListener('change',e=>{appState.profile.therapyWeekStart=Number(e.target.value);queueSaveProfile();});
   $('#se-cue')?.addEventListener('change',e=>{appState.seCue=e.target.value;appState.seStage='starter';appState.currentPromptId=null;appState.starterPromptId=null;chooseQuestion(appState.seCue,'starter');render();});
   $('#review-event-filter')?.addEventListener('change',e=>{appState.reviewEventFilter=e.target.value==='discuss'?'discuss':'all';render({preserveScroll:true});});
+}
+function toggleInitialSuggestion(kind,suggestionId,checked){
+  const items=kind==='private'?INITIAL_PRIVATE_SUGGESTIONS:INITIAL_SOCIAL_SUGGESTIONS;
+  const suggestion=items.find(x=>x.id===suggestionId); if(!suggestion) return;
+  const w=appState.currentWeek; const arr=kind==='private'?w.privateTargets:w.socialTargets;
+  const existing=arr.find(t=>t.sourceSuggestionId===suggestionId);
+  if(checked && !existing){arr.push({id:uid(),label:suggestion.label,definition:suggestion.definition,type:'scale',order:arr.length,sourceSuggestionId:suggestionId});}
+  if(!checked && existing){const next=arr.filter(t=>t.sourceSuggestionId!==suggestionId);if(kind==='private')w.privateTargets=next;else w.socialTargets=next;}
+  queueSaveWeek();render();
 }
 function toggleSkill(id,checked,doRender=true){const d=getSelectedEntry(); if(checked&&!d.skills.includes(id))d.skills.push(id); if(!checked)d.skills=d.skills.filter(x=>x!==id); d.modifiedAt=new Date().toISOString(); if(d.completed){d.completed=false;d.completedAt=null;} queueSaveWeek(); if(doRender)updateCompletionUi(d);}
 function toggleFocusSkill(id,checked){const w=appState.currentWeek;if(checked){if(w.focusSkills.length>=5){alert('Choose up to five focus skills.');render();return;} if(!w.focusSkills.includes(id))w.focusSkills.push(id);}else w.focusSkills=w.focusSkills.filter(x=>x!==id);queueSaveWeek();render();}
@@ -1146,12 +1239,13 @@ function updateTargetField(kind,id,field,val){const arr=kind==='private'?appStat
 function deleteTarget(kind,id){const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;if(!confirm('Remove this target from the current week?'))return;const next=arr.filter(x=>x.id!==id);if(kind==='private')appState.currentWeek.privateTargets=next;else appState.currentWeek.socialTargets=next;queueSaveWeek();render();}
 
 function filenameSafePart(value){
-  return String(value||'').trim().replace(/[^A-Za-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'') || 'Diary';
+  return String(value||'').trim().replace(/[^A-Za-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'');
 }
 function pdfFilenameBase(date=new Date()){
   const pad=n=>String(n).padStart(2,'0');
   const stamp=`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}_${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
-  return `RO-DBT-Diary-${filenameSafePart(appState.profile?.pdfName||'')}-${stamp}`;
+  const name=filenameSafePart(appState.profile?.pdfName||'');
+  return `RO-DBT-Diary${name?`-${name}`:''}-${stamp}`;
 }
 function buildPdfReportData(){
   const w=appState.currentWeek; const dates=weekDates(w);
@@ -1161,7 +1255,7 @@ function buildPdfReportData(){
   const events=dates.flatMap(d=>w.days[d].events.map(e=>({day:fmtDay(d),date:fmtDate(d,{month:'numeric',day:'numeric'}),context:e.context||'',note:e.note||'',discuss:!!e.discuss})));
   const saved=w.savedSEPrompts.map(promptById).filter(Boolean).map(p=>p.text);
   return {
-    title:`RO-DBT Diary — ${appState.profile.pdfName||''}`,
+    title:appState.profile.pdfName?`RO-DBT Diary — ${appState.profile.pdfName}`:'RO-DBT Diary',
     week:`Therapy week ${fmtDate(w.startDate,{month:'short',day:'numeric',year:'numeric'})} – ${fmtDate(w.endDate,{month:'short',day:'numeric',year:'numeric'})}`,
     completion,
     dayHeaders:completion.map(x=>`${x.day} ${x.date}`),
@@ -1210,6 +1304,24 @@ async function printTherapistReport(){
 }
 
 async function handleAction(a,b){
+  if(a==='initial-setup-next'){
+    if((appState.initialSetupStep||1)===1){
+      const name=$('#initial-pdf-name')?.value.trim()||'';appState.profile.pdfName=name;
+      const raw=$('#initial-week-start')?.value??'';
+      if(raw===''){alert('Choose the day your therapy week starts before continuing.');return;}
+      const day=Number(raw);appState.profile.therapyWeekStart=day;resetInitialWeekDates(day);queueSaveProfile();queueSaveWeek();
+    }
+    appState.initialSetupStep=Math.min(5,(appState.initialSetupStep||1)+1);render({resetScroll:true});return;
+  }
+  if(a==='initial-setup-back'){appState.initialSetupStep=Math.max(1,(appState.initialSetupStep||1)-1);render({resetScroll:true});return;}
+  if(a==='finish-initial-setup'){
+    if(!Number.isInteger(appState.profile.therapyWeekStart)){appState.initialSetupStep=1;render({resetScroll:true});alert('Choose the day your therapy week starts before finishing setup.');return;}
+    const now=new Date().toISOString();const w=appState.currentWeek;
+    appState.profile.initialSetupComplete=true;appState.profile.version=4;appState.profile.modifiedAt=now;
+    w.setupStatus='confirmed';w.setupConfirmedAt=now;w.modifiedAt=now;
+    await appState.saveChain;await saveRecord('profile',structuredClone(appState.profile));await saveRecord(`week:${w.id}`,structuredClone(w));
+    appState.page=null;appState.nav='home';appState.initialSetupStep=1;appState.modal=null;render({resetScroll:true});return;
+  }
   if(a==='back-guide'){appState.page=appState.guideReturn||null;if(!appState.page)appState.nav='more';appState.guideReturn=null;render();return;}
   if(a==='day-prev'){moveSelectedDay(-1);return;}
   if(a==='day-next'){moveSelectedDay(1);return;}
@@ -1305,9 +1417,9 @@ function validatePortableData(data){if(!data||data.format!=='ro-diary-data'||dat
 async function createBackupFromModal(){const p1=$('#backup-pass1')?.value||'';const p2=$('#backup-pass2')?.value||'';if(p1.length<10){appState.modal.error='Use at least 10 characters for the backup password.';render();return;}if(p1!==p2){appState.modal.error='Passwords do not match.';render();return;}try{appState.busy=true;const portable=await collectPortableData();const salt=randomBytes(16);const key=await deriveBackupKey(p1,salt);const e=await aesEncrypt(key,enc.encode(JSON.stringify(portable)));const envelope={format:'ro-diary-backup',version:1,kdf:{name:'PBKDF2-SHA256',iterations:BACKUP_ITERATIONS,salt:arrToB64(salt)},cipher:{name:'AES-256-GCM',iv:arrToB64(e.iv)},data:arrToB64(e.data)};const blob=new Blob([JSON.stringify(envelope)],{type:'application/octet-stream'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`RO-DBT-Diary-Backup-${todayStr()}.rodbt`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);appState.profile.lastBackupAt=new Date().toISOString();queueSaveProfile();appState.modal=null;render();}catch(e){appState.modal.error=e.message;render();}finally{appState.busy=false;}}
 let pendingRestoreEnvelope=null;
 function pickRestoreFile(){const input=document.createElement('input');input.type='file';input.accept='.rodbt,application/octet-stream,application/json';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{pendingRestoreEnvelope=JSON.parse(await file.text());if(pendingRestoreEnvelope.format!=='ro-diary-backup')throw new Error('Not an RO-DBT Diary backup.');appState.modal={type:'restore-password',error:''};render();}catch(e){alert(`Backup could not be opened: ${e.message}`);}};input.click();}
-async function restoreFromModal(){const pass=$('#restore-pass')?.value||'';try{appState.busy=true;const env=pendingRestoreEnvelope;if(!env)throw new Error('No backup selected.');const key=await deriveBackupKey(pass,b64ToArr(env.kdf.salt));const plain=await aesDecrypt(key,{iv:b64ToArr(env.cipher.iv),data:b64ToArr(env.data)});const data=JSON.parse(dec.decode(plain));validatePortableData(data);if(!confirm(`Restore ${data.weeks.length} therapy week(s) and replace the current vault?`))return;
+async function restoreFromModal(){const pass=$('#restore-pass')?.value||'';try{appState.busy=true;const env=pendingRestoreEnvelope;if(!env)throw new Error('No backup selected.');const key=await deriveBackupKey(pass,b64ToArr(env.kdf.salt));const plain=await aesDecrypt(key,{iv:b64ToArr(env.cipher.iv),data:b64ToArr(env.data)});const data=JSON.parse(dec.decode(plain));validatePortableData(data);if(typeof data.profile.initialSetupComplete!=='boolean')data.profile.initialSetupComplete=true;if((data.profile.version||1)<4)data.profile.version=4;if(!confirm(`Restore ${data.weeks.length} therapy week(s) and replace the current vault?`))return;
  const oldProfile=await idbGet('records','profile'); const oldWeekPayloads={}; for(const id of appState.profile.weekIds) oldWeekPayloads[id]=await idbGet('records',`week:${id}`);
- try{const encryptedProfile=await encryptJson(data.profile);const encryptedWeeks={};for(const w of data.weeks)encryptedWeeks[w.id]=await encryptJson(w);await idbPut('records','profile',encryptedProfile);for(const id of appState.profile.weekIds)await idbDelete('records',`week:${id}`);for(const [id,p] of Object.entries(encryptedWeeks))await idbPut('records',`week:${id}`,p);appState.profile=data.profile;appState.currentWeek=data.weeks.find(w=>w.id===data.profile.currentWeekId)||data.weeks.at(-1);pendingRestoreEnvelope=null;appState.modal=null;render();}catch(e){if(oldProfile)await idbPut('records','profile',oldProfile);for(const [id,p] of Object.entries(oldWeekPayloads))if(p)await idbPut('records',`week:${id}`,p);throw e;}
+ try{const encryptedProfile=await encryptJson(data.profile);const encryptedWeeks={};for(const w of data.weeks)encryptedWeeks[w.id]=await encryptJson(w);await idbPut('records','profile',encryptedProfile);for(const id of appState.profile.weekIds)await idbDelete('records',`week:${id}`);for(const [id,p] of Object.entries(encryptedWeeks))await idbPut('records',`week:${id}`,p);appState.profile=data.profile;appState.currentWeek=data.weeks.find(w=>w.id===data.profile.currentWeekId)||data.weeks.at(-1);appState.selectedDate=appState.currentWeek?.days?.[todayStr()]?todayStr():Object.keys(appState.currentWeek?.days||{}).sort()[0]||null;appState.page=data.profile.initialSetupComplete===false?'initial-setup':null;appState.nav='home';appState.initialSetupStep=1;pendingRestoreEnvelope=null;appState.modal=null;render({resetScroll:true});}catch(e){if(oldProfile)await idbPut('records','profile',oldProfile);for(const [id,p] of Object.entries(oldWeekPayloads))if(p)await idbPut('records',`week:${id}`,p);throw e;}
  }catch(e){appState.modal={type:'restore-password',error:'Backup password is wrong or the backup is damaged.'};render();}finally{appState.busy=false;}}
 
 async function changePinFromModal(){const oldPin=$('#old-pin')?.value||'';const n1=$('#new-pin1')?.value||'';const n2=$('#new-pin2')?.value||'';if(!/^\d{4}$/.test(oldPin)||!/^\d{4}$/.test(n1)){appState.modal.error='Passcodes must be exactly 4 digits.';render();return;}if(n1!==n2){appState.modal.error='New passcodes do not match.';render();return;}try{const deviceKey=await idbGet('secure','deviceKey');const wrap=await idbGet('secure','vaultWrap');const oldKey=await derivePinKey(oldPin,b64ToArr(wrap.pinSalt));const innerBytes=await aesDecrypt(oldKey,{iv:b64ToArr(wrap.pinIv),data:b64ToArr(wrap.pinData)});const newSalt=randomBytes(16);const newKey=await derivePinKey(n1,newSalt);const newWrap=await aesEncrypt(newKey,innerBytes);await idbPut('secure','vaultWrap',{pinSalt:arrToB64(newSalt),pinIv:arrToB64(newWrap.iv),pinData:arrToB64(newWrap.data)});appState.modal=null;render();}catch(e){appState.modal.error='Current passcode is incorrect.';render();}}
@@ -1318,7 +1430,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.8').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.9').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 

@@ -254,3 +254,16 @@ html, body, #app {
 @media print {
   .report-rating-key { margin: 5px 0 7px; font-size: 8px; line-height: 1.3; }
 }
+
+
+/* 0.5.9 first-time setup */
+.initial-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:2px 0 14px; color:var(--muted); font-size:12px; }
+.initial-progress strong { color:var(--accent); }
+.initial-setup-actions { display:flex; justify-content:space-between; gap:10px; margin:14px 0 calc(18px + env(safe-area-inset-bottom)); }
+.initial-setup-actions .btn:last-child { margin-left:auto; }
+.setup-suggestions { display:grid; gap:9px; }
+.setup-suggestion { display:grid; grid-template-columns:22px minmax(0,1fr); gap:9px; align-items:start; padding:11px; border:1px solid var(--line); border-radius:11px; background:#f3f6f8; }
+.setup-suggestion input { margin-top:3px; width:18px; height:18px; }
+.setup-suggestion strong { display:block; font-size:14px; line-height:1.25; }
+.setup-suggestion small { display:block; margin-top:4px; color:var(--muted); font-size:12px; line-height:1.4; }
+.initial-review { display:grid; gap:9px; font-size:13px; line-height:1.4; }

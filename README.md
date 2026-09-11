@@ -1,20 +1,22 @@
-# RO-DBT Diary Beta 0.5.8
+# RO-DBT Diary Beta 0.5.9
 
 Private, local-first RO-DBT diary card beta.
 
-## Changes in 0.5.8
-- Audited the app for iPhone scroll-to-top jumps caused by full-screen re-renders after same-screen interactions.
-- Added app-wide state-aware scroll preservation: re-renders on the same logical screen keep the current vertical position automatically.
-- Navigation to a different screen or a different diary day still opens at the top as intended.
-- Fixed known jump paths in Week Setup, including focus-skill changes, Add Target, Delete Target, and other controls that re-render the setup screen.
-- Fixed known jump paths in the SE Question Finder, including cue changes, Another Starter, Go One Step Further, Use This Question outcomes, Favorite, and Not Useful.
-- Preserved scroll position when opening/closing or updating same-screen modals, including Saved Questions and settings/backup dialogs.
-- Preserved horizontal position in Weekly Review rating tables during same-screen re-renders.
-- Added scroll stabilization to the main content and modal scroll containers to reduce browser scroll anchoring interference.
-- No diary data structure, backup format, target scoring, PDF, Question Finder bank, or guided-audio changes.
+## Changes in 0.5.9
+- Added a first-time Initial Setup flow for brand-new local installations.
+- Existing 0.5.8 and earlier local diaries bypass Initial Setup automatically; their data and current setup are preserved.
+- New users now choose the day their therapy week starts before the first week is created.
+- Removed the original developer/user-specific starter data from fresh installations: no personal name, targets, focus skills, self-enquiry question, or homework is preloaded.
+- Social-signal and private-target examples are offered as optional tappable suggestions and start unselected.
+- Users may also add and edit their own targets during Initial Setup.
+- Weekly focus skills, self-enquiry focus, homework, valued goal, and optional RO-DBT fields are included in the guided first-week setup.
+- Added a Review & Start step before the first week begins.
+- Added a Restore Existing Backup option during Initial Setup for someone moving an existing diary to a new browser/device.
+- Preserved the 0.5.8 app-wide scroll-position fix and all unrelated diary, PDF, backup, Question Finder, and guided-audio behavior.
 
 ## Important
-- This update preserves the existing encrypted vault, diary weeks, backups, and locally imported Loving Kindness audio.
-- Do not delete/reinstall the Home Screen app for this update.
-- Create a current encrypted backup before updating.
+- This update does not erase or replace an existing local diary.
+- Create a current encrypted backup before updating an existing installation.
+- Do not delete/reinstall the Home Screen app merely to update from 0.5.8.
+- A brand-new browser/device creates its own separate local vault.
 - RO-DBT Diary is not monitored and does not alert a therapist or emergency service.
