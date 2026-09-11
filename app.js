@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.11-beta';
+const APP_VERSION = '0.5.12-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -435,6 +435,7 @@ function idbGet(store,key){ return new Promise((resolve,reject)=>{const tx=db.tr
 function idbPut(store,key,val){ return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite'); tx.objectStore(store).put(val,key); tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error);}); }
 function idbDelete(store,key){ return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite'); tx.objectStore(store).delete(key); tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error);}); }
 function idbClear(store){ return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite'); tx.objectStore(store).clear(); tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error);}); }
+function idbReplaceRecords(entries){ return new Promise((resolve,reject)=>{const tx=db.transaction('records','readwrite');const store=tx.objectStore('records');store.clear();for(const [key,val] of entries)store.put(val,key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Local diary reset was interrupted.'));}); }
 
 async function derivePinKey(pin, salt) {
   const base = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
@@ -1032,7 +1033,7 @@ function renderGuidedPractices(){
 
 function renderMore(){ const p=appState.profile; return `<h1 class="page-title">More</h1><section class="card"><div class="card-body menu-list">
   <button class="btn" data-page="week-setup">Week Setup</button><button class="btn" data-page="setup-guide">How to Set Up Your Diary Card</button><button class="btn" data-page="guided-practices">Guided Practices</button><button class="btn" data-page="archive">Archive</button><button class="btn" data-page="skills">RO Skills Reference</button><button class="btn" data-page="settings">Settings</button>
- </div></section><section class="card"><div class="card-body"><div class="list-row"><strong>Last encrypted backup</strong><span class="small">${p.lastBackupAt?new Date(p.lastBackupAt).toLocaleString():'None yet'}</span></div><button class="btn primary wide" style="margin-top:10px" data-action="backup">Create Encrypted Backup</button><button class="btn wide" style="margin-top:8px" data-action="restore">Restore Backup</button></div></section><div class="subtle">RO-DBT Diary ${APP_VERSION}. Data stays on this device unless you deliberately export it.</div>`;}
+ </div></section><section class="card"><div class="card-body"><div class="list-row"><strong>Last encrypted backup</strong><span class="small">${p.lastBackupAt?new Date(p.lastBackupAt).toLocaleString():'None yet'}</span></div><button class="btn primary wide" style="margin-top:10px" data-action="backup">Create Encrypted Backup</button><button class="btn wide" style="margin-top:8px" data-action="restore">Restore Backup</button></div></section><section class="card"><div class="card-header"><div class="section-kicker">Reset</div></div><div class="card-body"><div class="subtle">Start this browser's diary over from Initial Setup. Your 4-digit passcode and imported Loving Kindness audio are kept.</div><button class="btn danger wide" style="margin-top:10px" data-action="reset-app-data">Reset App Data…</button></div></section><div class="subtle">RO-DBT Diary ${APP_VERSION}. Data stays on this device unless you deliberately export it.</div>`;}
 
 function renderWeekSetup(){const w=appState.currentWeek; return `<div class="btn-row"><button class="btn" data-action="back-page">← Back</button><button class="btn soft" data-page="setup-guide">Setup Guide</button></div><h1 class="page-title">Week Setup</h1><div class="subtle">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
  ${w.setupStatus==='pending'?'<div class="notice">This new week copied the prior week&apos;s setup. Review anything that changed in therapy, then finish setup.</div>':''}
@@ -1152,6 +1153,9 @@ function renderModal(){
   }
   if(m.type==='change-pin'){
     return `<div class="modal-backdrop"><div class="modal"><h2>Change Passcode</h2><div class="field"><label>Current 4-digit passcode</label><input type="password" inputmode="numeric" maxlength="4" id="old-pin"></div><div class="field"><label>New 4-digit passcode</label><input type="password" inputmode="numeric" maxlength="4" id="new-pin1"></div><div class="field"><label>Confirm new passcode</label><input type="password" inputmode="numeric" maxlength="4" id="new-pin2"></div>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row"><button class="btn primary" data-action="do-change-pin">Change</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+  }
+  if(m.type==='reset-app-data'){
+    return `<div class="modal-backdrop"><div class="modal"><h2>Reset App Data?</h2><div class="notice"><strong>Are you sure?</strong> This permanently deletes all therapy weeks, ratings, notes/events, targets, weekly setup, settings, and saved Self-Enquiry questions stored in this browser.</div><p class="subtle">This cannot be undone unless you have an encrypted backup. Your 4-digit passcode and imported Loving Kindness audio will be kept.</p>${m.error?`<div class="error">${escapeHtml(m.error)}</div>`:''}<div class="btn-row"><button class="btn danger" data-action="confirm-reset-app-data">Reset App Data</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
   }
   if(m.type==='archive-view') return renderArchiveModal(m.week);
   if(m.type==='delete-week'){
@@ -1364,6 +1368,8 @@ async function handleAction(a,b){
   if(a==='do-backup'){await createBackupFromModal();return;}
   if(a==='restore'){pickRestoreFile();return;}
   if(a==='do-restore'){await restoreFromModal();return;}
+  if(a==='reset-app-data'){appState.modal={type:'reset-app-data',error:''};render({preserveScroll:true});return;}
+  if(a==='confirm-reset-app-data'){await resetAppData();return;}
   if(a==='lock-now'){lockApp();return;}
   if(a==='change-pin'){appState.modal={type:'change-pin',error:''};render({preserveScroll:true});return;}
   if(a==='do-change-pin'){await changePinFromModal();return;}
@@ -1428,13 +1434,48 @@ async function restoreFromModal(){const pass=$('#restore-pass')?.value||'';try{a
 
 async function changePinFromModal(){const oldPin=$('#old-pin')?.value||'';const n1=$('#new-pin1')?.value||'';const n2=$('#new-pin2')?.value||'';if(!/^\d{4}$/.test(oldPin)||!/^\d{4}$/.test(n1)){appState.modal.error='Passcodes must be exactly 4 digits.';render();return;}if(n1!==n2){appState.modal.error='New passcodes do not match.';render();return;}try{const deviceKey=await idbGet('secure','deviceKey');const wrap=await idbGet('secure','vaultWrap');const oldKey=await derivePinKey(oldPin,b64ToArr(wrap.pinSalt));const innerBytes=await aesDecrypt(oldKey,{iv:b64ToArr(wrap.pinIv),data:b64ToArr(wrap.pinData)});const newSalt=randomBytes(16);const newKey=await derivePinKey(n1,newSalt);const newWrap=await aesEncrypt(newKey,innerBytes);await idbPut('secure','vaultWrap',{pinSalt:arrToB64(newSalt),pinIv:arrToB64(newWrap.iv),pinData:arrToB64(newWrap.data)});appState.modal=null;render();}catch(e){appState.modal.error='Current passcode is incorrect.';render();}}
 
+async function resetAppData(){
+  if(appState.busy || !vaultKey) return;
+  try{
+    appState.busy=true;
+    await appState.saveChain;
+    const week=buildNewWeek(new Date(),null,{blank:true});
+    const now=new Date().toISOString();
+    const profile={
+      version:4,initialSetupComplete:false,therapyWeekStart:null,currentWeekId:week.id,weekIds:[week.id],
+      pdfName:'',lastBackupAt:null,createdAt:now,modifiedAt:now,
+      favoritePromptIds:[],notUsefulPromptIds:[],recentPromptIds:[],myQuestions:[]
+    };
+    const encryptedProfile=await encryptJson(profile);
+    const encryptedWeek=await encryptJson(week);
+    await idbReplaceRecords([['profile',encryptedProfile],[`week:${week.id}`,encryptedWeek]]);
+    try{await idbPut('meta','failedAttempts',{count:0,nextAllowedAt:0});}catch(_){}
+    pendingRestoreEnvelope=null;
+    appState.saveChain=Promise.resolve();
+    appState.saveError=null;
+    appState.currentPromptId=null;
+    appState.starterPromptId=null;
+    appState.seCue='unsure';
+    appState.seStage='starter';
+    appState.reviewEventFilter='all';
+    appState.guideReturn=null;
+    appState.modal=null;
+    lockApp();
+  }catch(e){
+    appState.modal={type:'reset-app-data',error:`Reset could not be completed: ${e.message||e}`};
+    render({preserveScroll:true});
+  }finally{
+    appState.busy=false;
+  }
+}
+
 function deleteLegacyDatabase(name){return new Promise(resolve=>{try{const req=indexedDB.deleteDatabase(name);req.onsuccess=req.onerror=req.onblocked=()=>resolve();}catch(_){resolve();}});}
 
 async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.11').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.12').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 
