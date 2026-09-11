@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.7-beta';
+const APP_VERSION = '0.5.8-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -667,17 +667,79 @@ function promptById(id){ return SE_QUESTION_BANK.find(p=>p.id===id) || LEGACY_SE
 function categoryLabel(id){ return SE_CUES.find(c=>c.id===id)?.label || LEGACY_SE_CATEGORIES.find(c=>c.id===id)?.label || id; }
 function cueLabel(id){ return SE_CUES.find(c=>c.id===id)?.label || id; }
 
+function currentViewKey(){
+  if(appState.setupNeeded || appState.locked) return `lock:${appState.setupNeeded?appState.pinStage:'unlock'}`;
+  const weekId=appState.currentWeek?.id || 'none';
+  if(appState.page) return `week:${weekId}|page:${appState.page}`;
+  if(appState.nav==='today') return `week:${weekId}|nav:today|date:${selectedDateStr()}`;
+  return `week:${weekId}|nav:${appState.nav||'home'}`;
+}
+function currentModalKey(){
+  const m=appState.modal; if(!m) return '';
+  if(m.type==='event') return `event:${m.eventId||'new'}`;
+  if(m.type==='info') return `info:${m.targetId||''}`;
+  if(m.type==='skill-info') return `skill-info:${m.skillId||''}`;
+  if(m.type==='use-se-question') return `use-se-question:${m.questionId||''}`;
+  if(m.type==='archive-view'||m.type==='delete-week') return `${m.type}:${m.week?.id||''}`;
+  return m.type;
+}
+function restoreScroll(el,top,left=0){
+  if(!el || top===null || top===undefined) return;
+  const apply=()=>{
+    el.scrollTop=top;
+    if(left!==null && left!==undefined) el.scrollLeft=left;
+  };
+  // Restore immediately so there is no visible top-of-page flash, then repeat
+  // across two frames because iOS Safari can adjust a scroll container again
+  // while laying out newly rendered controls.
+  apply();
+  requestAnimationFrame(()=>{apply();requestAnimationFrame(apply);});
+}
 function render(options={}) {
   const root=document.getElementById('app'); if(!root) return;
+  const previousViewKey=root.dataset.viewKey||'';
+  const nextViewKey=currentViewKey();
+  const previousModalKey=root.dataset.modalKey||'';
+  const nextModalKey=currentModalKey();
   const previousContent=root.querySelector('.content');
-  const previousScrollTop=options.preserveScroll && previousContent ? previousContent.scrollTop : null;
-  if(appState.setupNeeded || appState.locked){ root.innerHTML=renderLock(); bindLock(); return; }
-  root.innerHTML=`${renderAppShell()}${renderModal()}${renderPrintReport()}`; bindApp();
-  if(previousScrollTop!==null){
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      const content=root.querySelector('.content');
-      if(content) content.scrollTop=previousScrollTop;
-    }));
+  const previousModal=root.querySelector('.modal');
+  const previousScrollTop=previousContent?previousContent.scrollTop:null;
+  const previousScrollLeft=previousContent?previousContent.scrollLeft:null;
+  const previousModalScrollTop=previousModal?previousModal.scrollTop:null;
+  const previousModalScrollLeft=previousModal?previousModal.scrollLeft:null;
+  const previousTableScrolls=previousContent?[...previousContent.querySelectorAll('.table-wrap')].map(el=>el.scrollLeft):[];
+  const sameView=!!previousViewKey && previousViewKey===nextViewKey;
+  const preserveContent=options.preserveScroll===true || (options.resetScroll!==true && sameView);
+  const preserveModal=options.preserveModalScroll===true || (options.resetScroll!==true && !!previousModalKey && previousModalKey===nextModalKey);
+
+  if(appState.setupNeeded || appState.locked){
+    root.innerHTML=renderLock();
+    root.dataset.viewKey=nextViewKey;
+    root.dataset.modalKey='';
+    bindLock();
+    return;
+  }
+
+  root.innerHTML=`${renderAppShell()}${renderModal()}${renderPrintReport()}`;
+  root.dataset.viewKey=nextViewKey;
+  root.dataset.modalKey=nextModalKey;
+  bindApp();
+
+  // Any re-render that remains on the same logical screen keeps the user's
+  // position automatically. Navigation to a different screen/day still starts
+  // at the top. This avoids iOS Safari jumping to the top when a control causes
+  // the app shell to be re-rendered.
+  if(preserveContent && previousScrollTop!==null){
+    const content=root.querySelector('.content');
+    restoreScroll(content,previousScrollTop,previousScrollLeft);
+    requestAnimationFrame(()=>{
+      [...root.querySelectorAll('.content .table-wrap')].forEach((el,i)=>{
+        if(previousTableScrolls[i]!==undefined) el.scrollLeft=previousTableScrolls[i];
+      });
+    });
+  }
+  if(preserveModal && previousModalScrollTop!==null){
+    restoreScroll(root.querySelector('.modal'),previousModalScrollTop,previousModalScrollLeft);
   }
 }
 
@@ -1256,7 +1318,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.7').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.8').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 

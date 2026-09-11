@@ -27,7 +27,7 @@ button:disabled { opacity: .55; cursor: default; }
 .topbar-row { max-width: 760px; margin: 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .brand { font-size: 19px; font-weight: 750; letter-spacing: -.01em; }
 .status-pill { font-size: 12px; padding: 5px 9px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
-.content { width: min(760px, 100%); margin: 0 auto; padding: 14px 14px 28px; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+.content { width: min(760px, 100%); margin: 0 auto; padding: 14px 14px 28px; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; overflow-anchor: none; scroll-behavior: auto; }
 .page-title { font-size: 26px; line-height: 1.15; margin: 8px 0 4px; letter-spacing:-.02em; }
 
 .day-nav { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:4px 0 10px; }
@@ -68,7 +68,7 @@ button:disabled { opacity: .55; cursor: default; }
 .nav-btn { border:0; background:transparent; color:var(--muted); min-height:52px; border-radius:11px; font-size:12px; font-weight:700; }
 .nav-btn.active { color:var(--accent); background:var(--accent-soft); }
 .modal-backdrop { position:fixed; inset:0; z-index:100; background:rgba(15,28,42,.48); display:flex; align-items:flex-end; justify-content:center; }
-.modal { background:var(--panel); width:min(760px,100%); max-height:88vh; overflow:auto; border-radius:18px 18px 0 0; padding:17px 16px calc(20px + env(safe-area-inset-bottom)); box-shadow:0 -6px 24px rgba(0,0,0,.15); }
+.modal { background:var(--panel); width:min(760px,100%); max-height:88vh; overflow:auto; overflow-anchor:none; scroll-behavior:auto; border-radius:18px 18px 0 0; padding:17px 16px calc(20px + env(safe-area-inset-bottom)); box-shadow:0 -6px 24px rgba(0,0,0,.15); }
 .modal h2 { margin:0 0 12px; font-size:21px; }
 .field { margin:12px 0; }
 .field label { display:block; font-size:13px; font-weight:700; margin-bottom:6px; }
