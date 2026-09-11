@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.6-beta';
+const APP_VERSION = '0.5.7-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -96,7 +96,7 @@ const DEFAULT_FOCUS_SKILLS = ['definitely','big3','lkm','sage','urge-surfing'];
 const DEFAULT_SE_FOCUS = 'When I notice the urge to avoid doing my diary card, what do I notice as I sit with and surf the urge instead of immediately acting on it?';
 const DEFAULT_HOMEWORK = 'Lesson 9 — Worksheet 9.A: Practicing Enhancing Facial Expressions';
 
-const SE_CATEGORIES = [
+const LEGACY_SE_CATEGORIES = [
   ['all','All Topics'],
   ['openness','Openness & Learning'],
   ['uncertainty','Uncertainty & Not Knowing'],
@@ -112,67 +112,69 @@ const SE_CATEGORIES = [
   ['body','Body & Activation']
 ].map(([id,label])=>({id,label}));
 
-const SE_PROMPTS = [
-  ['openness','What might I be missing because I am certain I already understand this situation?'],
-  ['openness','What information would be hardest for me to discover about my own part in this?'],
-  ['openness','If my interpretation is incomplete, what else might be true?'],
-  ['openness','What would I notice if I approached this as something to learn from rather than solve?'],
-  ['openness','What part of another perspective am I most resistant to considering?'],
-  ['uncertainty','What uncertainty am I trying to eliminate right now?'],
-  ['uncertainty','What would happen if I allowed this question to remain unanswered for a while?'],
-  ['uncertainty','What feels threatening about not knowing how this will turn out?'],
-  ['uncertainty','What conclusion am I treating as fact because uncertainty feels uncomfortable?'],
-  ['uncertainty','What could I learn if I did not rush to settle what this means?'],
-  ['defensiveness','What am I trying to protect when I feel the urge to explain or correct?'],
-  ['defensiveness','If I did not defend myself immediately, what would I fear might happen?'],
-  ['defensiveness','What feels at stake when someone sees me differently than I see myself?'],
-  ['defensiveness','What part of the feedback could contain useful information even if I disagree with the rest?'],
-  ['defensiveness','What do I want the other person to understand about me, and what happens if they do not?'],
-  ['avoidance','What experience am I trying not to have right now?'],
-  ['avoidance','If I stay present for one minute longer, what do I notice?'],
-  ['avoidance','What am I hoping will disappear if I postpone or leave this situation?'],
-  ['avoidance','What is the smallest part of this discomfort I am willing to remain with?'],
-  ['avoidance','Am I protecting myself from harm, or mainly from discomfort and uncertainty? What tells me that?'],
-  ['control','What am I trying to control that may not actually be controllable?'],
-  ['control','What feels risky about letting someone else handle this differently than I would?'],
-  ['control','What would I lose if I loosened my preferred way of doing this?'],
-  ['control','Where might efficiency or correctness be crowding out something else that matters?'],
-  ['control','What rule am I following here, and is it useful in this situation?'],
-  ['vulnerability','What feeling or admission would be hardest to say plainly right now?'],
-  ['vulnerability','What would feel exposing if another person knew it?'],
-  ['vulnerability','What softer feeling may be underneath the reaction I notice first?'],
-  ['vulnerability','What do I fear another person might conclude about me?'],
-  ['vulnerability','What would it be like to allow this feeling without fixing or explaining it?'],
-  ['social','What might my face, voice, posture, or timing be communicating that my words are not?'],
-  ['social','If someone only saw my behavior and could not hear my intentions, what might they reasonably conclude?'],
-  ['social','What signal am I sending about whether I am open to influence?'],
-  ['social','Did my behavior invite connection, distance, submission, or conflict? What makes me think that?'],
-  ['social','What would a slightly warmer or more open signal look like without pretending to feel something I do not?'],
-  ['shame','What judgment about myself am I tempted to treat as a fact?'],
-  ['shame','What am I afraid this mistake or interaction says about who I am?'],
-  ['shame','What would change if I could acknowledge embarrassment without hiding, attacking, or overexplaining?'],
-  ['shame','What part of this experience makes me want to disappear, prove myself, or regain status?'],
-  ['shame','Can I distinguish what I did from the global judgment I am making about myself?'],
-  ['connection','What matters more to me in this moment: being understood, being right, protecting myself, or staying connected?'],
-  ['connection','What would help another person experience me as available rather than defended?'],
-  ['connection','What am I unwilling to risk in order to be more connected?'],
-  ['connection','What kind of response would make room for both my perspective and someone else’s?'],
-  ['connection','Where might I be waiting for the other person to change before I allow myself to act according to my own values?'],
-  ['feedback','What part of this feedback do I most want to reject, and why?'],
-  ['feedback','If I assumed there is something useful here without assuming it is all correct, what would I examine?'],
-  ['feedback','What would make it easier for me to listen without deciding immediately whether the other person is right?'],
-  ['feedback','Am I evaluating the feedback itself, or reacting to how it makes me feel about myself?'],
-  ['feedback','What evidence supports my current view, and what evidence does not fit it?'],
-  ['appeasing','What am I hoping to prevent by agreeing or smoothing this over?'],
-  ['appeasing','If I expressed my actual view calmly, what outcome am I afraid of?'],
-  ['appeasing','Am I signaling agreement because I agree, or because conflict feels costly?'],
-  ['appeasing','What would honest engagement look like without either fighting or giving in?'],
-  ['appeasing','What do I risk losing when I hide disagreement to keep the peace?'],
-  ['body','What is my body doing before I have words for what I feel?'],
-  ['body','Where do I notice the first small sign that I am becoming activated?'],
-  ['body','What changes in my voice, face, breathing, or posture when I feel threatened?'],
-  ['body','If I stop analyzing for a moment, what physical sensation is most noticeable?'],
-  ['body','What urge appears alongside this sensation, and do I have to act on it?'],
+// Exact 0.5.6 bank retained only so previously saved/favorited prompt IDs continue to resolve.
+// Legacy prompts are not offered by the active Question Finder.
+const LEGACY_SE_PROMPTS = [
+  ["openness","What might I be missing because I am certain I already understand this situation?"],
+  ["openness","What information would be hardest for me to discover about my own part in this?"],
+  ["openness","If my interpretation is incomplete, what else might be true?"],
+  ["openness","What would I notice if I approached this as something to learn from rather than solve?"],
+  ["openness","What part of another perspective am I most resistant to considering?"],
+  ["uncertainty","What uncertainty am I trying to eliminate right now?"],
+  ["uncertainty","What would happen if I allowed this question to remain unanswered for a while?"],
+  ["uncertainty","What feels threatening about not knowing how this will turn out?"],
+  ["uncertainty","What conclusion am I treating as fact because uncertainty feels uncomfortable?"],
+  ["uncertainty","What could I learn if I did not rush to settle what this means?"],
+  ["defensiveness","What am I trying to protect when I feel the urge to explain or correct?"],
+  ["defensiveness","If I did not defend myself immediately, what would I fear might happen?"],
+  ["defensiveness","What feels at stake when someone sees me differently than I see myself?"],
+  ["defensiveness","What part of the feedback could contain useful information even if I disagree with the rest?"],
+  ["defensiveness","What do I want the other person to understand about me, and what happens if they do not?"],
+  ["avoidance","What experience am I trying not to have right now?"],
+  ["avoidance","If I stay present for one minute longer, what do I notice?"],
+  ["avoidance","What am I hoping will disappear if I postpone or leave this situation?"],
+  ["avoidance","What is the smallest part of this discomfort I am willing to remain with?"],
+  ["avoidance","Am I protecting myself from harm, or mainly from discomfort and uncertainty? What tells me that?"],
+  ["control","What am I trying to control that may not actually be controllable?"],
+  ["control","What feels risky about letting someone else handle this differently than I would?"],
+  ["control","What would I lose if I loosened my preferred way of doing this?"],
+  ["control","Where might efficiency or correctness be crowding out something else that matters?"],
+  ["control","What rule am I following here, and is it useful in this situation?"],
+  ["vulnerability","What feeling or admission would be hardest to say plainly right now?"],
+  ["vulnerability","What would feel exposing if another person knew it?"],
+  ["vulnerability","What softer feeling may be underneath the reaction I notice first?"],
+  ["vulnerability","What do I fear another person might conclude about me?"],
+  ["vulnerability","What would it be like to allow this feeling without fixing or explaining it?"],
+  ["social","What might my face, voice, posture, or timing be communicating that my words are not?"],
+  ["social","If someone only saw my behavior and could not hear my intentions, what might they reasonably conclude?"],
+  ["social","What signal am I sending about whether I am open to influence?"],
+  ["social","Did my behavior invite connection, distance, submission, or conflict? What makes me think that?"],
+  ["social","What would a slightly warmer or more open signal look like without pretending to feel something I do not?"],
+  ["shame","What judgment about myself am I tempted to treat as a fact?"],
+  ["shame","What am I afraid this mistake or interaction says about who I am?"],
+  ["shame","What would change if I could acknowledge embarrassment without hiding, attacking, or overexplaining?"],
+  ["shame","What part of this experience makes me want to disappear, prove myself, or regain status?"],
+  ["shame","Can I distinguish what I did from the global judgment I am making about myself?"],
+  ["connection","What matters more to me in this moment: being understood, being right, protecting myself, or staying connected?"],
+  ["connection","What would help another person experience me as available rather than defended?"],
+  ["connection","What am I unwilling to risk in order to be more connected?"],
+  ["connection","What kind of response would make room for both my perspective and someone else’s?"],
+  ["connection","Where might I be waiting for the other person to change before I allow myself to act according to my own values?"],
+  ["feedback","What part of this feedback do I most want to reject, and why?"],
+  ["feedback","If I assumed there is something useful here without assuming it is all correct, what would I examine?"],
+  ["feedback","What would make it easier for me to listen without deciding immediately whether the other person is right?"],
+  ["feedback","Am I evaluating the feedback itself, or reacting to how it makes me feel about myself?"],
+  ["feedback","What evidence supports my current view, and what evidence does not fit it?"],
+  ["appeasing","What am I hoping to prevent by agreeing or smoothing this over?"],
+  ["appeasing","If I expressed my actual view calmly, what outcome am I afraid of?"],
+  ["appeasing","Am I signaling agreement because I agree, or because conflict feels costly?"],
+  ["appeasing","What would honest engagement look like without either fighting or giving in?"],
+  ["appeasing","What do I risk losing when I hide disagreement to keep the peace?"],
+  ["body","What is my body doing before I have words for what I feel?"],
+  ["body","Where do I notice the first small sign that I am becoming activated?"],
+  ["body","What changes in my voice, face, breathing, or posture when I feel threatened?"],
+  ["body","If I stop analyzing for a moment, what physical sensation is most noticeable?"],
+  ["body","What urge appears alongside this sensation, and do I have to act on it?"],
   ["openness","Where am I treating familiarity with this situation as proof that there is nothing new to learn?"],
   ["openness","What would curiosity ask here that certainty does not ask?"],
   ["openness","If I temporarily set aside my preferred explanation, what becomes easier to notice?"],
@@ -195,7 +197,7 @@ const SE_PROMPTS = [
   ["avoidance","What might I learn if I remain present without requiring the discomfort to improve first?"],
   ["control","What outcome am I trying to guarantee, and what part of it belongs to someone else?"],
   ["control","Which rule feels nonnegotiable here, and where did that rule come from?"],
-  ["control","What would \u201cgood enough\u201d look like if perfect control were unavailable?"],
+  ["control","What would “good enough” look like if perfect control were unavailable?"],
   ["control","Is my preferred method serving the goal, or has following the method become the goal?"],
   ["control","What could someone do differently from me and still do adequately or well?"],
   ["vulnerability","What would I say if I did not need to sound certain, strong, or fully composed?"],
@@ -211,7 +213,7 @@ const SE_PROMPTS = [
   ["shame","Am I trying to repair an actual mistake, or trying to erase the feeling of being imperfect?"],
   ["shame","What evidence would help me decide whether this shame is warranted, partly warranted, or not warranted?"],
   ["shame","If I made room for being fallible, what action would still matter?"],
-  ["shame","What do I want to hide because I fear it will lower another person\u2019s opinion of me?"],
+  ["shame","What do I want to hide because I fear it will lower another person’s opinion of me?"],
   ["shame","How might I take responsibility without turning one behavior into a judgment about my whole identity?"],
   ["connection","Where am I asking for closeness while also signaling that I do not want to be influenced?"],
   ["connection","What degree of openness fits this relationship rather than the degree that fear or urgency is pushing me toward?"],
@@ -232,8 +234,121 @@ const SE_PROMPTS = [
   ["body","What sensation changes when I slow my breathing and stop preparing my response?"],
   ["body","If this tension could provide information rather than just a problem to remove, what might it be pointing toward?"],
   ["body","What does my body do when I move from curiosity into certainty or defense?"],
-  ["body","Can I notice this activation for a few moments without deciding what it means yet?"]
-].map((p, i) => ({id:`p${String(i+1).padStart(3,'0')}`, category:p[0], text:p[1]}));
+  ["body","Can I notice this activation for a few moments without deciding what it means yet?"],
+].map((p, i) => ({id:`p${String(i+1).padStart(3,'0')}`, category:p[0], text:p[1], legacy:true}));
+
+const SE_CUES = [
+  ["body","Body tension or activation"],
+  ["emotion","Strong emotion or discomfort"],
+  ["uncertainty","Uncertainty or not knowing"],
+  ["quick","Urge to respond, fix, decide, or act quickly"],
+  ["defend","Explaining, defending, correcting, or discounting"],
+  ["control","Certainty, rigid rules, or control"],
+  ["shutdown","Shutting down, giving up, or numbing"],
+  ["appease","Agreeing, appeasing, or giving in"],
+  ["avoid","Avoiding, resisting, postponing, or leaving"],
+  ["blame","Blame, unfairness, or needing acknowledgment/understanding"],
+  ["mistrust","Assumptions about another person’s intentions or mistrust"],
+  ["rumination","Rumination, replaying, rehearsal, or overplanning"],
+  ["shame","Shame, vulnerability, or harsh self-judgment"],
+  ["feedback","Feedback, criticism, or challenged expectations/beliefs"],
+  ["social","Face, voice, posture, silence, or other social signaling"],
+  ["unsure","Something feels off / I’m not sure"],
+].map(([id,label])=>({id,label}));
+
+// Active Question Finder bank. qf-* IDs prevent rewritten questions from silently changing historical saved text.
+const SE_QUESTION_BANK = [
+  ["p001","starter",["control","mistrust"],"When I notice myself feeling certain I understand this situation, what am I treating as already settled?"],
+  ["p002","edge",["blame","feedback"],"If there is anything about my own part in this that is difficult to consider, what do I notice?"],
+  ["p003","edge",["mistrust","uncertainty"],"If my interpretation is incomplete, what else might be true?"],
+  ["p004","starter",["unsure","emotion"],"What would I notice if I approached this as something to learn from rather than solve?"],
+  ["p005","edge",["feedback","mistrust"],"When I consider another perspective, do I notice any resistance or reluctance? If so, what do I notice about it?"],
+  ["p006","starter",["uncertainty"],"What do I notice about not knowing or not having this settled right now?"],
+  ["p007","edge",["uncertainty","rumination"],"What would happen if I allowed this question to remain unanswered for a while?"],
+  ["p008","edge",["uncertainty"],"What comes up when I imagine not knowing how this will turn out?"],
+  ["p009","starter",["uncertainty","rumination"],"Is there any conclusion I am treating as fact while some uncertainty remains?"],
+  ["p010","edge",["uncertainty","rumination","quick"],"What comes up if I leave the meaning of this unsettled for now?"],
+  ["p011","starter",["defend"],"When I notice myself wanting to explain or correct, what seems important about responding right then?"],
+  ["p012","edge",["defend","quick"],"What comes up if I imagine not defending myself immediately?"],
+  ["p013","edge",["feedback","shame"],"What do I notice when someone sees me differently than I see myself?"],
+  ["p014","edge",["defend"],"What part of the feedback could contain useful information even if I disagree with the rest?"],
+  ["p015","edge",["feedback","blame"],"What do I want the other person to understand about me, and what happens if they do not?"],
+  ["p016","starter",["avoid","shutdown"],"What part of this experience is difficult for me to stay with right now?"],
+  ["p017","starter",["avoid","shutdown"],"If I stay present for one minute longer, what do I notice?"],
+  ["p018","edge",["avoid","shutdown"],"What changes in me when I postpone, leave, or create distance from this situation?"],
+  ["p020","starter",["avoid","shutdown"],"What do I notice about my urge to create distance here, and what seems to make that urge stronger?"],
+  ["p021","starter",["control"],"What outcome or part of this situation do I feel compelled to manage?"],
+  ["p022","edge",["control"],"What comes up when someone else handles this differently than I would?"],
+  ["p023","edge",["control"],"What comes up if I imagine loosening my preferred way of doing this for a moment?"],
+  ["p024","starter",["control","quick"],"Is there anything I may be overlooking while focusing on efficiency or correctness?"],
+  ["p025","starter",["control"],"What rule am I following here, and is it useful in this situation?"],
+  ["p026","edge",["shame","emotion"],"What feeling or admission would be hardest to say plainly right now?"],
+  ["p027","edge",["shame"],"What would feel exposing if another person knew it?"],
+  ["p028","edge",["emotion","shame"],"If I stay with the reaction without explaining it, what feelings or sensations, if any, show up?"],
+  ["p029","edge",["shame"],"What comes up when I imagine another person forming a conclusion about me that I do not control?"],
+  ["p030","edge",["emotion"],"What would it be like to allow this feeling without fixing or explaining it?"],
+  ["p031","starter",["social"],"What might my face, voice, posture, or timing be communicating that my words are not?"],
+  ["p032","starter",["social","mistrust"],"If someone only saw my behavior and could not hear my intentions, what might they reasonably conclude?"],
+  ["p033","starter",["social"],"What signal am I sending about whether I am open to influence?"],
+  ["p034","starter",["social","mistrust"],"Did my behavior invite connection, distance, submission, or conflict? What makes me think that?"],
+  ["p036","starter",["shame"],"What judgment about myself am I tempted to treat as a fact?"],
+  ["p037","edge",["shame"],"What does this mistake or interaction seem to say about me, if anything?"],
+  ["p038","edge",["shame"],"If embarrassment is present, what do I notice when I stay with it without immediately responding?"],
+  ["p039","starter",["shame","emotion"],"What urges, if any, show up when I feel exposed, embarrassed, or self-conscious?"],
+  ["p043","edge",["shame","social"],"What comes up when I imagine being a little more open or close in this relationship?"],
+  ["p045","starter",["blame","social"],"Do I notice myself waiting for something from the other person before I engage differently? If so, what?"],
+  ["p046","starter",["feedback"],"What part of this feedback do I most want to reject, and why?"],
+  ["p047","edge",["feedback"],"If I assumed there is something useful here without assuming it is all correct, what would I examine?"],
+  ["p049","starter",["feedback","shame"],"What do I notice about both the content of this feedback and my reaction to receiving it?"],
+  ["p051","starter",["appease"],"When I agree or smooth things over, what changes in me or in the interaction?"],
+  ["p052","edge",["appease","shame"],"What comes up when I imagine expressing my actual view calmly while disagreement remains?"],
+  ["p053","starter",["appease"],"Am I signaling agreement because I agree, or because conflict feels costly?"],
+  ["p055","edge",["appease"],"What comes up if I do not smooth over a disagreement?"],
+  ["p056","starter",["body","emotion","unsure"],"What is my body doing before I have words for what I feel?"],
+  ["p057","starter",["body","quick"],"Where do I notice the first small sign that I am becoming activated?"],
+  ["p058","starter",["body","social"],"What changes in my voice, face, breathing, or posture when I become tense or activated?"],
+  ["p059","starter",["body","unsure"],"If I stop analyzing for a moment, what physical sensation is most noticeable?"],
+  ["p060","starter",["body","quick"],"What urge, if any, appears alongside this sensation?"],
+  ["p061","starter",["control","unsure"],"When a situation feels familiar, do I notice any tendency to assume there is nothing new to learn?"],
+  ["p062","edge",["control","unsure"],"What would curiosity ask here that certainty does not ask?"],
+  ["p063","edge",["feedback","control"],"If I temporarily set aside my preferred explanation, what becomes easier to notice?"],
+  ["p064","edge",["unsure","shame"],"When this topic has noticeable energy or resistance, what do I notice about where my attention wants to go or not go?"],
+  ["p066","starter",["uncertainty","control"],"What do I notice about wanting more certainty or predictability before I act?"],
+  ["p068","starter",["rumination","uncertainty"],"When I find myself rehearsing or preparing repeatedly, what seems to happen in me as I continue?"],
+  ["p070","edge",["uncertainty","shame"],"What comes up about me when I stay with not knowing?"],
+  ["p071","starter",["defend","body","quick"],"What happens in my body in the few seconds before I begin defending my position?"],
+  ["p072","starter",["defend","quick"],"When I want to clarify something, what do I notice about what I hope the clarification will accomplish?"],
+  ["p073","edge",["defend","emotion"],"If I pause the explaining for a moment, what feelings or sensations, if any, show up?"],
+  ["p074","edge",["defend","shame"],"What aspect of how I see myself feels especially important in this interaction?"],
+  ["p075","edge",["defend","feedback","quick"],"If I could be misunderstood without immediately correcting it, what might I notice next?"],
+  ["p076","starter",["avoid","shutdown"],"What conditions do I find myself believing need to be in place before I can engage with this?"],
+  ["p080","edge",["avoid","shutdown"],"What might I learn if I remain present without requiring the discomfort to improve first?"],
+  ["p081","starter",["control","blame"],"What part of this outcome do I feel especially responsible for managing, and what do I notice about that?"],
+  ["p082","edge",["control"],"Which rule feels especially important here, and what comes up if I imagine loosening it briefly?"],
+  ["p084","starter",["control"],"Is my preferred method serving the goal, or has following the method become the goal?"],
+  ["p085","edge",["control"],"What could someone do differently from me and still do adequately or well?"],
+  ["p086","edge",["shame","emotion"],"What changes in me if I imagine not needing to sound certain, strong, or fully composed?"],
+  ["p087","edge",["emotion","shame"],"If I stay with this without turning it into logic or criticism, what feeling, need, thought, or sensation, if any, becomes noticeable?"],
+  ["p088","edge",["shame","social"],"What do I want another person to know that I am reluctant to reveal directly?"],
+  ["p089","edge",["shame"],"What would feel most embarrassing to admit about why this matters to me?"],
+  ["p090","edge",["emotion","shame"],"If I allowed myself to be affected by this without judging that reaction, what would I notice?"],
+  ["p091","starter",["social"],"What did I communicate with timing, silence, facial expression, or posture before I said anything?"],
+  ["p092","starter",["social"],"Did my signal match the level of warmth, seriousness, or vulnerability I actually intended?"],
+  ["p093","starter",["social","mistrust"],"What might another person reasonably read into my expression even if that was not my intention?"],
+  ["p094","starter",["social"],"Do I notice any mismatch between the closeness I want and the distance my behavior may be signaling?"],
+  ["p096","starter",["shame"],"When I think about this mistake or imperfection, what urges or judgments show up?"],
+  ["p099","edge",["shame"],"What feels difficult to reveal here, and what comes up when I imagine revealing it?"],
+  ["p101","starter",["social","feedback"],"When I want closeness, what do I notice about how open or closed I am to the other person’s influence?"],
+  ["p104","edge",["avoid","shutdown","social"],"When I create distance, what happens in me and what becomes easier or harder to notice?"],
+  ["p108","edge",["feedback"],"What part of the feedback can I test rather than immediately accept or reject?"],
+  ["p110","edge",["feedback","mistrust"],"What might the other person be seeing repeatedly that is difficult for me to see from inside myself?"],
+  ["p111","starter",["appease","social"],"What am I communicating by agreeing when my actual view is different?"],
+  ["p113","starter",["appease"],"When I agree or keep the peace, what do I notice about what that agreement is doing for me in the moment?"],
+  ["p114","edge",["appease","quick"],"What comes up when I imagine staying honest and engaged while the other person may remain displeased or tension remains?"],
+  ["p116","starter",["body","quick"],"What is the earliest physical cue I can identify before my behavior becomes automatic?"],
+  ["p118","edge",["body","emotion","unsure"],"If this tension could provide information rather than just a problem to remove, what might it be pointing toward?"],
+  ["p119","starter",["body","defend","control"],"What does my body do when I move from curiosity into certainty or defense?"],
+].map(([sourceId,stage,cues,text])=>({id:`qf-${sourceId}`,sourceId,stage,cues,category:cues[0],text}));
 
 let db = null;
 let vaultKey = null;
@@ -252,7 +367,9 @@ let appState = {
   selectedDate: null,
   modal: null,
   currentPromptId: null,
-  seCategory: 'all',
+  starterPromptId: null,
+  seCue: 'unsure',
+  seStage: 'starter',
   reviewEventFilter: 'all',
   hiddenAt: null,
   saveChain: Promise.resolve(),
@@ -546,8 +663,9 @@ function setTherapyProcessValue(id,val){
 }
 function skillById(id){ return SKILLS.find(s=>s.id===id); }
 function skillName(id){ return skillById(id)?.name || id; }
-function promptById(id){ return SE_PROMPTS.find(p=>p.id===id); }
-function categoryLabel(id){ return SE_CATEGORIES.find(c=>c.id===id)?.label || id; }
+function promptById(id){ return SE_QUESTION_BANK.find(p=>p.id===id) || LEGACY_SE_PROMPTS.find(p=>p.id===id); }
+function categoryLabel(id){ return SE_CUES.find(c=>c.id===id)?.label || LEGACY_SE_CATEGORIES.find(c=>c.id===id)?.label || id; }
+function cueLabel(id){ return SE_CUES.find(c=>c.id===id)?.label || id; }
 
 function render(options={}) {
   const root=document.getElementById('app'); if(!root) return;
@@ -622,7 +740,7 @@ function renderHome(){
     </div></section>
     <div class="home-grid">
       <button class="home-tile" data-nav="today"><strong>Today</strong><span>Complete or edit today&apos;s diary card.</span></button>
-      <button class="home-tile" data-nav="se"><strong>Self-Enquiry</strong><span>Weekly focus, prompts, and saved questions.</span></button>
+      <button class="home-tile" data-nav="se"><strong>Self-Enquiry</strong><span>Weekly focus, Question Finder, and saved questions.</span></button>
       <button class="home-tile" data-page="guided-practices"><strong>Guided Practices</strong><span>Open your personal Loving Kindness meditation.</span></button>
       <button class="home-tile" data-nav="review"><strong>Review</strong><span>Review the week and export the therapist PDF.</span></button>
       <button class="home-tile" data-page="week-setup"><strong>Week Setup</strong><span>Update targets, focus skills, and weekly fields.</span></button>
@@ -663,7 +781,7 @@ function renderToday(day) {
     <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body"><div class="checkbox-list">
       ${focusSkills.map(s=>`<div class="skill-select-row"><label class="check-row skill-check"><input type="checkbox" data-skill="${s.id}" ${day.skills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label><button class="info-btn" aria-label="About ${escapeHtml(s.name)}" data-skill-info="${s.id}">i</button></div>`).join('')}
     </div><button class="btn soft wide" style="margin-top:10px" data-action="other-skill">+ Other RO Skill</button></div></section>
-    <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry focus</div></div><div class="card-body"><div>${escapeHtml(w.weeklySEFocus||'No weekly focus question entered.')}</div><div class="btn-row" style="margin-top:12px"><button class="btn soft" data-action="go-se">Give Me an SE Prompt</button><button class="btn" data-action="saved-questions">Saved Questions</button></div></div></section>
+    <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry focus</div></div><div class="card-body"><div>${escapeHtml(w.weeklySEFocus||'No weekly focus question entered.')}</div><div class="btn-row" style="margin-top:12px"><button class="btn soft" data-action="go-se">Find an SE Question</button><button class="btn" data-action="saved-questions">Saved Questions</button></div></div></section>
     <section class="card"><div class="card-header"><div class="section-kicker">Notes / Events</div></div><div class="card-body">
       ${day.events.length?day.events.map(e=>renderEvent(e)).join(''):'<div class="subtle">No events recorded today.</div>'}
       <button class="btn soft wide" style="margin-top:10px" data-action="add-event">+ Add Note / Event</button></div></section>
@@ -671,29 +789,59 @@ function renderToday(day) {
 }
 function renderEvent(e){return `<div class="event-card"><div class="event-context">${escapeHtml(e.context||'Event')}</div><div class="event-note">${escapeHtml(e.note||'')}</div>${e.discuss?'<div class="flag">★ Discuss in Therapy</div>':''}<div class="event-actions"><button class="btn" data-action="edit-event" data-event-id="${e.id}">Edit</button><button class="btn danger" data-action="delete-event" data-event-id="${e.id}">Delete</button></div></div>`;}
 
-function choosePrompt(category=appState.seCategory) {
+function questionIsBlocked(q){
   const blocked=new Set(appState.profile.notUsefulPromptIds||[]);
-  const recent=new Set(appState.profile.recentPromptIds||[]);
-  let pool=SE_PROMPTS.filter(p=>!blocked.has(p.id) && (category==='all' || p.category===category));
-  if(!pool.length) pool=SE_PROMPTS.filter(p=>!blocked.has(p.id));
-  let fresh=pool.filter(p=>!recent.has(p.id) && p.id!==appState.currentPromptId);
-  if(!fresh.length) fresh=pool.filter(p=>p.id!==appState.currentPromptId);
-  const p=fresh[Math.floor(Math.random()*fresh.length)] || pool[0] || SE_PROMPTS[0];
-  appState.currentPromptId=p.id;
-  const next=[...(appState.profile.recentPromptIds||[]).filter(id=>id!==p.id),p.id].slice(-12);
-  appState.profile.recentPromptIds=next; queueSaveProfile();
-  return p;
+  return blocked.has(q.id) || (q.sourceId && blocked.has(q.sourceId));
 }
-function renderSE(){ const p=promptById(appState.currentPromptId)||choosePrompt(); const w=appState.currentWeek; const fav=appState.profile.favoritePromptIds.includes(p.id); const saved=w.savedSEPrompts.includes(p.id);
-  return `<h1 class="page-title">Self-Enquiry</h1><section class="card"><div class="card-header"><div class="section-kicker">Weekly focus</div></div><div class="card-body">${escapeHtml(w.weeklySEFocus||'No weekly focus question.')}</div></section>
-  <section class="card"><div class="card-header"><div class="section-kicker">Prompt generator</div><div class="section-title">One question at a time</div></div><div class="card-body"><div class="field"><label>Topic</label><select id="se-category">${SE_CATEGORIES.map(c=>`<option value="${c.id}" ${appState.seCategory===c.id?'selected':''}>${escapeHtml(c.label)}</option>`).join('')}</select></div><div class="prompt-category">${escapeHtml(categoryLabel(p.category))}</div><div class="prompt-box">${escapeHtml(p.text)}</div><div class="subtle" style="margin-top:8px">The aim is to find a useful question near something you do not fully know yet—not to force a quick answer.</div><div class="btn-row" style="margin-top:12px">
-    <button class="btn primary" data-action="another-prompt">Another Prompt</button>
-    <button class="btn ${saved?'soft':''}" data-action="save-prompt">${saved?'Saved This Week':'Save for This Week'}</button>
-    <button class="btn ${fav?'soft':''}" data-action="favorite-prompt">${fav?'★ Favorite':'☆ Favorite'}</button>
-    <button class="btn" data-action="reject-prompt">Not Useful</button></div></div></section>
+function rememberQuestion(q){
+  const ids=(appState.profile.recentPromptIds||[]).filter(id=>id!==q.id);
+  appState.profile.recentPromptIds=[...ids,q.id].slice(-12);
+  queueSaveProfile();
+}
+function chooseQuestion(cue=appState.seCue,stage='starter',excludeId=null){
+  const recent=new Set(appState.profile.recentPromptIds||[]);
+  let pool=SE_QUESTION_BANK.filter(q=>q.stage===stage && q.cues.includes(cue) && !questionIsBlocked(q));
+  // If every question in a cue was marked Not Useful, allow the pool again rather than jumping to another cue.
+  if(!pool.length) pool=SE_QUESTION_BANK.filter(q=>q.stage===stage && q.cues.includes(cue));
+  let fresh=pool.filter(q=>!recent.has(q.id) && q.id!==excludeId);
+  if(!fresh.length) fresh=pool.filter(q=>q.id!==excludeId);
+  const q=fresh[Math.floor(Math.random()*fresh.length)] || pool[0];
+  if(!q) return null;
+  appState.currentPromptId=q.id;
+  appState.seStage=stage;
+  if(stage==='starter') appState.starterPromptId=q.id;
+  rememberQuestion(q);
+  return q;
+}
+function currentFinderQuestion(){
+  const q=promptById(appState.currentPromptId);
+  if(q && !q.legacy && q.cues?.includes(appState.seCue) && q.stage===appState.seStage) return q;
+  return chooseQuestion(appState.seCue,'starter');
+}
+function renderSE(){
+  const q=currentFinderQuestion(); const w=appState.currentWeek;
+  if(!q) return `<h1 class="page-title">Self-Enquiry</h1><section class="card"><div class="card-body">No Question Finder item is available for this cue.</div></section>`;
+  const fav=appState.profile.favoritePromptIds.includes(q.id);
+  const saved=w.savedSEPrompts.includes(q.id);
+  const isEdge=appState.seStage==='edge';
+  const guidance=isEdge
+    ? 'You do not need to solve this now. If this question has some energy, use it and stop searching.'
+    : 'If this question already brings up tension, resistance, uncertainty, emotion, or something you would rather not examine, you may already have a useful question.';
+  const mainButtons=isEdge
+    ? `<button class="btn primary" data-action="use-se-question">Use This Question</button><button class="btn" data-action="reject-question">Not Useful</button>`
+    : `<button class="btn primary" data-action="use-se-question">Use This Question</button><button class="btn soft" data-action="go-one-step-further">Go One Step Further</button><button class="btn" data-action="another-starter">Another Starter</button><button class="btn" data-action="reject-question">Not Useful</button>`;
+  return `<h1 class="page-title">Self-Enquiry</h1>
+  <section class="card"><div class="card-header"><div class="section-kicker">Weekly focus</div></div><div class="card-body">${escapeHtml(w.weeklySEFocus||'No weekly focus question.')}</div></section>
+  <section class="card"><div class="card-header"><div class="section-kicker">Question Finder</div><div class="section-title">Find one useful question, then practice it</div></div><div class="card-body">
+    <div class="field"><label>What are you noticing?</label><select id="se-cue">${SE_CUES.map(c=>`<option value="${c.id}" ${appState.seCue===c.id?'selected':''}>${escapeHtml(c.label)}</option>`).join('')}</select><div class="subtle small">Choose the closest fit. More than one can apply. These are general RO-DBT cues, not personal targets.</div></div>
+    <div class="prompt-category">${escapeHtml(cueLabel(appState.seCue))}</div>
+    <div class="prompt-box">${escapeHtml(q.text)}</div>
+    <div class="subtle" style="margin-top:8px">${escapeHtml(guidance)}</div>
+    <div class="btn-row" style="margin-top:12px">${mainButtons}</div>
+    <div class="btn-row" style="margin-top:8px"><button class="btn ${fav?'soft':''}" data-action="favorite-prompt">${fav?'★ Favorite':'☆ Favorite'}</button>${saved?'<span class="subtle small">Saved This Week</span>':''}</div>
+  </div></section>
   <section class="card"><div class="card-header"><div class="section-kicker">My questions</div></div><div class="card-body"><div class="list-row"><strong>Saved This Week</strong><span>${w.savedSEPrompts.length}</span></div><div class="list-row"><strong>Questions I Discovered This Week</strong><span>${w.newSEQuestions.length}</span></div><div class="list-row"><strong>Favorites</strong><span>${appState.profile.favoritePromptIds.length}</span></div><div class="list-row"><strong>My Question Library</strong><span>${appState.profile.myQuestions.length}</span></div><div class="btn-row" style="margin-top:10px"><button class="btn soft" data-action="saved-questions">View Questions</button><button class="btn" data-action="add-week-question">+ Question I Discovered</button><button class="btn" data-action="add-my-question">+ My Question</button></div></div></section>`;
 }
-
 function weekDates(w){ return Object.keys(w.days).sort(); }
 function renderRatingsTable(targets,w){ const dates=weekDates(w); return `<div class="table-wrap"><table><thead><tr><th>Target</th>${dates.map(d=>`<th>${fmtDay(d)}</th>`).join('')}</tr></thead><tbody>${targets.map(t=>`<tr><td title="${escapeHtml(t.label)}">${escapeHtml(t.label)}</td>${dates.map(d=>{const v=targetValue(w.days[d],t.id); return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`;}
 function renderTargetRatingKey(){return `<div class="rating-key"><div><strong>Target rating key:</strong> Numeric targets use 0–5. Y/N targets indicate whether the behavior occurred.</div><div class="rating-key-scale">${SCALE_ANCHORS.map(a=>escapeHtml(a)).join(' · ')}</div></div>`;}
@@ -716,7 +864,7 @@ function renderReview(){const w=appState.currentWeek; const dates=weekDates(w); 
  ${renderProcessRatings(w)}
  ${renderReviewEvents(w)}
  <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body">${Object.keys(skillMap).length?Object.entries(skillMap).map(([s,ds])=>`<div class="list-row"><strong>${escapeHtml(skillName(s))}</strong><span class="small">${ds.join(', ')}</span></div>`).join(''):'<div class="subtle">No skills recorded.</div>'}</div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry</div></div><div class="card-body"><div><strong>Weekly focus:</strong><br>${escapeHtml(w.weeklySEFocus||'—')}</div><div style="margin-top:10px"><strong>Saved prompts:</strong> ${w.savedSEPrompts.length}</div><div style="margin-top:6px"><strong>Questions discovered:</strong> ${(w.newSEQuestions||[]).length}</div></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry</div></div><div class="card-body"><div><strong>Weekly focus:</strong><br>${escapeHtml(w.weeklySEFocus||'—')}</div><div style="margin-top:10px"><strong>Saved questions:</strong> ${w.savedSEPrompts.length}</div><div style="margin-top:6px"><strong>Questions discovered:</strong> ${(w.newSEQuestions||[]).length}</div></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Week context</div></div><div class="card-body"><div><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div style="margin-top:8px"><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${w.majorOCThemeEnabled?`<div style="margin-top:8px"><strong>Major OC Theme:</strong> ${escapeHtml(w.majorOCTheme||'—')}</div>`:''}</div></section>
  <section class="card"><div class="card-body"><button class="btn primary wide" data-action="print-report">Export Therapist PDF</button><button class="btn wide" style="margin-top:8px" data-action="backup">Create Encrypted Backup</button></div></section>`;}
 
@@ -773,7 +921,7 @@ function renderSetupGuide(){return `<button class="btn" data-action="back-guide"
    <ul class="guide-list"><li>0 — not present</li><li>1 — slight / low</li><li>2 — definitely present, but low level</li><li>3 — moderate</li><li>4 — severe / intense</li><li>5 — most extreme level for you</li></ul>
    <p><strong>Blank means unanswered.</strong> A 0 or No means you intentionally rated the target as absent.</p>
  </div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">5</div><div class="section-title">Add the weekly Self-Enquiry focus</div></div><div class="card-body guide-copy"><p>Enter the therapist-assigned or current self-enquiry question for the week. The built-in prompt generator can help you find additional questions, but it does not replace the weekly treatment focus.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">5</div><div class="section-title">Add the weekly Self-Enquiry focus</div></div><div class="card-body guide-copy"><p>Enter the therapist-assigned or current self-enquiry question you are carrying or practicing this week. If you need help finding a useful question, the optional Question Finder uses general RO-DBT cues as scaffolding. The goal is to find a question with some energy—not a perfect question or an immediate answer. Save questions that emerge during practice under Questions I Discovered This Week. The diary app does not replace a private RO self-enquiry journal.</p></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">6</div><div class="section-title">Choose weekly focus skills</div></div><div class="card-body guide-copy"><p>Select up to five skills you are actively practicing or want easy access to. You can still record any other RO skill you actually use during the week. Tap the information button beside a skill on Today for a quick reference.</p></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">7</div><div class="section-title">Add homework and an optional valued goal</div></div><div class="card-body guide-copy"><p>Use the homework field as a reminder of the current skills-class assignment. Add a valued goal only when it is useful for the current week; it does not need to be filled in simply because the field exists.</p></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">8</div><div class="section-title">Turn on optional RO-DBT fields only when useful</div></div><div class="card-body guide-copy">
@@ -823,6 +971,11 @@ function renderModal(){
     const steps=s.steps?.length?`<div class="field"><label>Quick guide</label><ol class="skill-steps">${s.steps.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ol></div>`:'';
     const guided=s.id==='lkm'?`<button class="btn soft wide" style="margin-top:12px" data-action="open-guided-lkm">Play Guided Meditation</button>`:'';
     return `<div class="modal-backdrop"><div class="modal"><h2>${escapeHtml(s.name)}</h2><div class="skill-ref">${escapeHtml(s.reference||'')}</div><div class="field"><label>What it is for</label><div>${escapeHtml(s.purpose||'')}</div></div><div class="field"><label>When it may be useful</label><div>${escapeHtml(s.useWhen||'')}</div></div>${steps}<div class="subtle">This is a brief reference, not a replacement for the RO-DBT handout/worksheet.</div>${guided}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button></div></div>`;
+  }
+  if(m.type==='use-se-question'){
+    const q=promptById(m.questionId); if(!q) return '';
+    const alreadySaved=appState.currentWeek.savedSEPrompts.includes(q.id);
+    return `<div class="modal-backdrop"><div class="modal"><h2>Use This Question</h2><div class="prompt-box">${escapeHtml(q.text)}</div><div class="subtle" style="margin-top:10px">Choose what you want to do with this question. Setting it as Weekly Focus will replace the current weekly focus.</div><div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="set-weekly-focus-from-question" data-question-id="${q.id}">Set as Weekly Focus</button><button class="btn" data-action="save-question-this-week" data-question-id="${q.id}">${alreadySaved?'Remove from This Week':'Save for This Week'}</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
   }
   if(m.type==='saved-questions'){
     const w=appState.currentWeek;
@@ -879,7 +1032,7 @@ function renderPrintReport(){
     <h2>Social Signals & Overt Behaviors</h2>${renderPrintRatingsTable(w.socialTargets,w)}
     <h2>Skills Used</h2>${renderPrintSkills(w)}
     <h2>Notes / Events</h2>${events.length?events.map(e=>`<div class="report-event ${e.discuss?'report-event-flagged':''}"><div><strong>${fmtDay(e.date)} ${fmtDate(e.date,{month:'numeric',day:'numeric'})}${e.context?` — ${escapeHtml(e.context)}`:''}</strong>${e.discuss?' <span class="report-flag">Discuss in Therapy</span>':''}</div>${e.note?`<div class="report-event-note">${escapeHtml(e.note)}</div>`:''}</div>`).join(''):'<div class="report-empty">No notes or events recorded.</div>'}
-    <h2>Self-Enquiry</h2><div class="report-context-row"><strong>Weekly focus:</strong> ${escapeHtml(w.weeklySEFocus||'—')}</div>${saved.length?`<div class="report-context-row"><strong>Saved prompts this week:</strong><ul>${saved.map(p=>`<li>${escapeHtml(p.text)}</li>`).join('')}</ul></div>`:''}${(w.newSEQuestions||[]).length?`<div class="report-context-row"><strong>Questions discovered this week:</strong><ul>${w.newSEQuestions.map(q=>`<li>${escapeHtml(q.text)}</li>`).join('')}</ul></div>`:''}
+    <h2>Self-Enquiry</h2><div class="report-context-row"><strong>Weekly focus:</strong> ${escapeHtml(w.weeklySEFocus||'—')}</div>${saved.length?`<div class="report-context-row"><strong>Saved questions this week:</strong><ul>${saved.map(p=>`<li>${escapeHtml(p.text)}</li>`).join('')}</ul></div>`:''}${(w.newSEQuestions||[]).length?`<div class="report-context-row"><strong>Questions discovered this week:</strong><ul>${w.newSEQuestions.map(q=>`<li>${escapeHtml(q.text)}</li>`).join('')}</ul></div>`:''}
     <h2>Week Context</h2><div class="report-context-row"><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div class="report-context-row"><strong>Valued Goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${oc}
     <div class="report-footer">Generated locally by RO-DBT Diary ${APP_VERSION} • ${escapeHtml(new Date().toLocaleString())}</div>
   </div>`;
@@ -922,7 +1075,7 @@ function bindApp(){
   $$('[data-delete-target]').forEach(b=>b.addEventListener('click',()=>deleteTarget(b.dataset.kind,b.dataset.deleteTarget)));
   $('#pdf-name')?.addEventListener('change',e=>{appState.profile.pdfName=e.target.value;queueSaveProfile();});
   $('#week-start')?.addEventListener('change',e=>{appState.profile.therapyWeekStart=Number(e.target.value);queueSaveProfile();});
-  $('#se-category')?.addEventListener('change',e=>{appState.seCategory=e.target.value;appState.currentPromptId=null;choosePrompt();render();});
+  $('#se-cue')?.addEventListener('change',e=>{appState.seCue=e.target.value;appState.seStage='starter';appState.currentPromptId=null;appState.starterPromptId=null;chooseQuestion(appState.seCue,'starter');render();});
   $('#review-event-filter')?.addEventListener('change',e=>{appState.reviewEventFilter=e.target.value==='discuss'?'discuss':'all';render({preserveScroll:true});});
 }
 function toggleSkill(id,checked,doRender=true){const d=getSelectedEntry(); if(checked&&!d.skills.includes(id))d.skills.push(id); if(!checked)d.skills=d.skills.filter(x=>x!==id); d.modifiedAt=new Date().toISOString(); if(d.completed){d.completed=false;d.completedAt=null;} queueSaveWeek(); if(doRender)updateCompletionUi(d);}
@@ -1014,10 +1167,13 @@ async function handleAction(a,b){
   if(a==='complete-day'){const d=getSelectedEntry();const all=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets];const missing=all.filter(t=>targetValue(d,t.id)===null).map(t=>({id:t.id,label:t.label,type:t.type,kind:'target'}));if(appState.currentWeek.riskTrackingEnabled){for(const f of CLINICAL_DAILY_FIELDS)if(clinicalValue(d,f.id)===null)missing.push({id:f.id,label:f.label,type:f.type,kind:'clinical'});}appState.modal={type:'complete',missing,date:d.date};render({preserveScroll:true});return;}
   if(a==='fill-zero-complete'){const d=getSelectedEntry();for(const x of appState.modal.missing){if(x.kind==='clinical'){d.clinical=d.clinical||blankClinicalDaily();d.clinical[x.id]=x.type==='yn'?false:0;}else d.ratings[x.id]=x.type==='yn'?false:0;}completeDay(d);return;}
   if(a==='confirm-complete'){completeDay(getSelectedEntry());return;}
-  if(a==='another-prompt'){choosePrompt();render();return;}
-  if(a==='save-prompt'){const id=appState.currentPromptId;const arr=appState.currentWeek.savedSEPrompts;appState.currentWeek.savedSEPrompts=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];queueSaveWeek();render();return;}
+  if(a==='another-starter'){chooseQuestion(appState.seCue,'starter',appState.currentPromptId);render();return;}
+  if(a==='go-one-step-further'){const starter=promptById(appState.currentPromptId);if(starter?.stage==='starter')appState.starterPromptId=starter.id;chooseQuestion(appState.seCue,'edge');render();return;}
+  if(a==='use-se-question'){const id=appState.currentPromptId;appState.modal={type:'use-se-question',questionId:id};render({preserveScroll:true});return;}
+  if(a==='set-weekly-focus-from-question'){const q=promptById(b.dataset.questionId);if(q){appState.currentWeek.weeklySEFocus=q.text;queueSaveWeek();}appState.modal=null;render();return;}
+  if(a==='save-question-this-week'){const id=b.dataset.questionId;const arr=appState.currentWeek.savedSEPrompts;if(id){appState.currentWeek.savedSEPrompts=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];queueSaveWeek();}appState.modal=null;render();return;}
   if(a==='favorite-prompt'){const id=appState.currentPromptId;const arr=appState.profile.favoritePromptIds;appState.profile.favoritePromptIds=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];queueSaveProfile();render();return;}
-  if(a==='reject-prompt'){const id=appState.currentPromptId;if(!appState.profile.notUsefulPromptIds.includes(id))appState.profile.notUsefulPromptIds.push(id);queueSaveProfile();choosePrompt();render();return;}
+  if(a==='reject-question'){const id=appState.currentPromptId;if(id&&!appState.profile.notUsefulPromptIds.includes(id))appState.profile.notUsefulPromptIds.push(id);queueSaveProfile();if(appState.seStage==='edge'&&appState.starterPromptId){appState.currentPromptId=appState.starterPromptId;appState.seStage='starter';render();}else{chooseQuestion(appState.seCue,'starter',id);render();}return;}
   if(a==='saved-questions'){appState.modal={type:'saved-questions'};render({preserveScroll:true});return;}
   if(a==='add-week-question'){appState.modal={type:'week-question'};render({preserveScroll:true});return;}
   if(a==='save-week-question'){const text=$('#week-question-text')?.value.trim();if(text){appState.currentWeek.newSEQuestions.push({id:uid(),text,createdAt:new Date().toISOString()});queueSaveWeek();}appState.modal=null;render();return;}
@@ -1100,7 +1256,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.5').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.7').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 
