@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.10-beta';
+const APP_VERSION = '0.5.11-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -912,7 +912,8 @@ function renderDayNavigator(w,day){
 function renderClinicalDailyField(field,day){const val=clinicalValue(day,field.id);if(field.type==='yn')return `<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(field.label)}</div></div><div class="scale yesno"><button class="score-btn ${val===false?'selected':''}" data-clinical-target="${field.id}" data-value="false">No</button><button class="score-btn ${val===true?'selected':''}" data-clinical-target="${field.id}" data-value="true">Yes</button></div></div>`;return `<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(field.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${val===n?'selected':''}" data-clinical-target="${field.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`;}
 function renderClinicalDailySection(w,day){if(!w.riskTrackingEnabled)return '';return `<section class="card"><div class="card-header"><div class="section-kicker">Optional clinical tracking</div><div class="section-title">Risk, Medication & Substance</div></div><div class="card-body"><div class="subtle small">These fields mirror the optional Houston/Lynch-style diary-card items. Unanswered remains blank. RO-DBT Diary is not monitored and does not alert your therapist or emergency services.</div>${CLINICAL_DAILY_FIELDS.map(f=>renderClinicalDailyField(f,day)).join('')}</div></section>`;}
 function renderMajorOCThemeContext(w){if(!w.majorOCThemeEnabled)return '';return `<section class="card"><div class="card-header"><div class="section-kicker">Weekly context</div><div class="section-title">Major OC Theme</div></div><div class="card-body"><div>${escapeHtml(w.majorOCTheme||'Not entered for this week.')}</div><div class="subtle small" style="margin-top:8px">This is one weekly value and is the same on every day of this therapy week. Edit it in Week Setup.</div></div></section>`;}
-function renderProcessRatings(w){if(!w.therapyProcessEnabled)return '';const vals=w.therapyProcess||blankTherapyProcess();return `<section class="card"><div class="card-header"><div class="section-kicker">Before therapy · Weekly</div><div class="section-title">Therapy Alliance & Process</div></div><div class="card-body"><div class="subtle small">Complete these 0–5 ratings once for the week, just prior to therapy. The same weekly values appear in Today and Weekly Review.</div>${THERAPY_PROCESS_FIELDS.map(f=>`<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(f.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${vals[f.id]===n?'selected':''}" data-process-target="${f.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`).join('')}</div></section>`;}
+function renderProcessRatingsEntry(w){if(!w.therapyProcessEnabled)return '';const vals=w.therapyProcess||blankTherapyProcess();return `<section class="card"><div class="card-header"><div class="section-kicker">Before therapy · Weekly</div><div class="section-title">Therapy Alliance & Process</div></div><div class="card-body"><div class="subtle small">Complete these 0–5 ratings once for the week, just prior to therapy. Weekly Review shows the same values in a read-only summary.</div>${THERAPY_PROCESS_FIELDS.map(f=>`<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(f.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${vals[f.id]===n?'selected':''}" data-process-target="${f.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`).join('')}</div></section>`;}
+function renderProcessRatingsReview(w){if(!w.therapyProcessEnabled)return '';const vals=w.therapyProcess||blankTherapyProcess();return `<section class="card"><div class="card-header"><div class="section-kicker">Before therapy · Weekly</div><div class="section-title">Therapy Alliance & Process</div></div><div class="card-body"><div class="subtle small">Weekly 0–5 ratings · — = not entered</div><div class="process-review-list">${THERAPY_PROCESS_FIELDS.map(f=>`<div class="list-row process-review-row"><span>${escapeHtml(f.label)}</span><strong class="process-review-value">${vals[f.id]??'—'}</strong></div>`).join('')}</div></div></section>`;}
 
 function renderToday(day) {
   const w=appState.currentWeek; if(!day) return '<div class="notice">No daily entry is available.</div>';
@@ -930,7 +931,7 @@ function renderToday(day) {
     <section class="card"><div class="card-header"><div class="section-kicker">Notes / Events</div></div><div class="card-body">
       ${day.events.length?day.events.map(e=>renderEvent(e)).join(''):'<div class="subtle">No events recorded today.</div>'}
       <button class="btn soft wide" style="margin-top:10px" data-action="add-event">+ Add Note / Event</button></div></section>
-    ${renderProcessRatings(w)}
+    ${renderProcessRatingsEntry(w)}
     <section class="card"><div class="card-body"><div id="completion-state">${day.completed?`<div class="notice success-notice">Completed ${new Date(day.completedAt).toLocaleString()}</div>`:''}</div><button id="complete-day-btn" class="btn primary wide" data-action="complete-day">${day.completed?'Review Completion':(day.date===todayStr()?'Complete Today':`Complete ${fmtDay(day.date)}`)}</button></div></section>`;
 }
 function renderEvent(e){return `<div class="event-card"><div class="event-context">${escapeHtml(e.context||'Event')}</div><div class="event-note">${escapeHtml(e.note||'')}</div>${e.discuss?'<div class="flag">★ Discuss in Therapy</div>':''}<div class="event-actions"><button class="btn" data-action="edit-event" data-event-id="${e.id}">Edit</button><button class="btn danger" data-action="delete-event" data-event-id="${e.id}">Delete</button></div></div>`;}
@@ -1007,7 +1008,7 @@ function renderReview(){const w=appState.currentWeek; const dates=weekDates(w); 
  ${w.riskTrackingEnabled?`<section class="card"><div class="card-header"><div class="section-kicker">Risk, medication & substance</div></div><div class="card-body"><div class="table-wrap"><table><thead><tr><th>Field</th>${dates.map(d=>`<th>${fmtDay(d)}</th>`).join('')}</tr></thead><tbody>${CLINICAL_DAILY_FIELDS.map(f=>`<tr><td>${escapeHtml(f.label)}</td>${dates.map(d=>{const v=clinicalValue(w.days[d],f.id);return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div></div></section>`:''}
  <section class="card"><div class="card-header"><div class="section-kicker">Private behaviors, emotions & urges</div></div><div class="card-body">${renderRatingsTable(w.privateTargets,w)}</div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Social signals & overt behaviors</div></div><div class="card-body">${renderRatingsTable(w.socialTargets,w)}</div></section>
- ${renderProcessRatings(w)}
+ ${renderProcessRatingsReview(w)}
  ${renderReviewEvents(w)}
  <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body">${Object.keys(skillMap).length?Object.entries(skillMap).map(([s,ds])=>`<div class="list-row"><strong>${escapeHtml(skillName(s))}</strong><span class="small">${ds.join(', ')}</span></div>`).join(''):'<div class="subtle">No skills recorded.</div>'}</div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry</div></div><div class="card-body"><div><strong>Weekly focus:</strong><br>${escapeHtml(w.weeklySEFocus||'—')}</div><div style="margin-top:10px"><strong>Saved questions:</strong> ${w.savedSEPrompts.length}</div><div style="margin-top:6px"><strong>Questions discovered:</strong> ${(w.newSEQuestions||[]).length}</div></div></section>
@@ -1433,7 +1434,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.10').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.11').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 

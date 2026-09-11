@@ -256,7 +256,7 @@ html, body, #app {
 }
 
 
-/* 0.5.10: first-time setup retained from 0.5.9 */
+/* 0.5.11: first-time setup retained from 0.5.9 */
 .initial-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:2px 0 14px; color:var(--muted); font-size:12px; }
 .initial-progress strong { color:var(--accent); }
 .initial-setup-actions { display:flex; justify-content:space-between; gap:10px; margin:14px 0 calc(18px + env(safe-area-inset-bottom)); }
@@ -267,3 +267,10 @@ html, body, #app {
 .setup-suggestion strong { display:block; font-size:14px; line-height:1.25; }
 .setup-suggestion small { display:block; margin-top:4px; color:var(--muted); font-size:12px; line-height:1.4; }
 .initial-review { display:grid; gap:9px; font-size:13px; line-height:1.4; }
+
+
+/* 0.5.11: compact read-only Therapy Alliance & Process summary in Weekly Review */
+.process-review-list { margin-top: 6px; }
+.process-review-row { align-items: flex-start; }
+.process-review-row > span { flex: 1 1 auto; min-width: 0; line-height: 1.35; }
+.process-review-value { flex: 0 0 auto; min-width: 24px; text-align: center; font-size: 15px; }
