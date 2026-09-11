@@ -256,7 +256,7 @@ html, body, #app {
 }
 
 
-/* 0.5.9 first-time setup */
+/* 0.5.10: first-time setup retained from 0.5.9 */
 .initial-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:2px 0 14px; color:var(--muted); font-size:12px; }
 .initial-progress strong { color:var(--accent); }
 .initial-setup-actions { display:flex; justify-content:space-between; gap:10px; margin:14px 0 calc(18px + env(safe-area-inset-bottom)); }

@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.9-beta';
+const APP_VERSION = '0.5.10-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -911,13 +911,15 @@ function renderDayNavigator(w,day){
 
 function renderClinicalDailyField(field,day){const val=clinicalValue(day,field.id);if(field.type==='yn')return `<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(field.label)}</div></div><div class="scale yesno"><button class="score-btn ${val===false?'selected':''}" data-clinical-target="${field.id}" data-value="false">No</button><button class="score-btn ${val===true?'selected':''}" data-clinical-target="${field.id}" data-value="true">Yes</button></div></div>`;return `<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(field.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${val===n?'selected':''}" data-clinical-target="${field.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`;}
 function renderClinicalDailySection(w,day){if(!w.riskTrackingEnabled)return '';return `<section class="card"><div class="card-header"><div class="section-kicker">Optional clinical tracking</div><div class="section-title">Risk, Medication & Substance</div></div><div class="card-body"><div class="subtle small">These fields mirror the optional Houston/Lynch-style diary-card items. Unanswered remains blank. RO-DBT Diary is not monitored and does not alert your therapist or emergency services.</div>${CLINICAL_DAILY_FIELDS.map(f=>renderClinicalDailyField(f,day)).join('')}</div></section>`;}
-function renderProcessRatings(w){if(!w.therapyProcessEnabled)return '';const vals=w.therapyProcess||blankTherapyProcess();return `<section class="card"><div class="card-header"><div class="section-kicker">Before therapy</div><div class="section-title">Therapy Alliance & Process</div></div><div class="card-body"><div class="subtle small">Rate 0–5 just prior to the session, matching the Houston diary-card structure.</div>${THERAPY_PROCESS_FIELDS.map(f=>`<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(f.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${vals[f.id]===n?'selected':''}" data-process-target="${f.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`).join('')}</div></section>`;}
+function renderMajorOCThemeContext(w){if(!w.majorOCThemeEnabled)return '';return `<section class="card"><div class="card-header"><div class="section-kicker">Weekly context</div><div class="section-title">Major OC Theme</div></div><div class="card-body"><div>${escapeHtml(w.majorOCTheme||'Not entered for this week.')}</div><div class="subtle small" style="margin-top:8px">This is one weekly value and is the same on every day of this therapy week. Edit it in Week Setup.</div></div></section>`;}
+function renderProcessRatings(w){if(!w.therapyProcessEnabled)return '';const vals=w.therapyProcess||blankTherapyProcess();return `<section class="card"><div class="card-header"><div class="section-kicker">Before therapy · Weekly</div><div class="section-title">Therapy Alliance & Process</div></div><div class="card-body"><div class="subtle small">Complete these 0–5 ratings once for the week, just prior to therapy. The same weekly values appear in Today and Weekly Review.</div>${THERAPY_PROCESS_FIELDS.map(f=>`<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(f.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${vals[f.id]===n?'selected':''}" data-process-target="${f.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`).join('')}</div></section>`;}
 
 function renderToday(day) {
   const w=appState.currentWeek; if(!day) return '<div class="notice">No daily entry is available.</div>';
   const focusSkills=w.focusSkills.map(id=>SKILLS.find(s=>s.id===id)).filter(Boolean);
   return `${renderDayNavigator(w,day)}<h1 class="page-title">${escapeHtml(fmtLong(day.date))}</h1><div class="subtle">Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
     ${day.date!==todayStr()?'<div class="notice history-notice">Viewing an earlier day. If you change a completed entry, it will become incomplete until you complete it again.</div>':''}
+    ${renderMajorOCThemeContext(w)}
     ${renderClinicalDailySection(w,day)}
     ${renderTargetSection('What I noticed internally','Private Behaviors, Emotions & Urges',w.privateTargets,day)}
     ${renderTargetSection('What I signaled or did','Social Signals & Overt Behaviors',w.socialTargets,day)}
@@ -928,6 +930,7 @@ function renderToday(day) {
     <section class="card"><div class="card-header"><div class="section-kicker">Notes / Events</div></div><div class="card-body">
       ${day.events.length?day.events.map(e=>renderEvent(e)).join(''):'<div class="subtle">No events recorded today.</div>'}
       <button class="btn soft wide" style="margin-top:10px" data-action="add-event">+ Add Note / Event</button></div></section>
+    ${renderProcessRatings(w)}
     <section class="card"><div class="card-body"><div id="completion-state">${day.completed?`<div class="notice success-notice">Completed ${new Date(day.completedAt).toLocaleString()}</div>`:''}</div><button id="complete-day-btn" class="btn primary wide" data-action="complete-day">${day.completed?'Review Completion':(day.date===todayStr()?'Complete Today':`Complete ${fmtDay(day.date)}`)}</button></div></section>`;
 }
 function renderEvent(e){return `<div class="event-card"><div class="event-context">${escapeHtml(e.context||'Event')}</div><div class="event-note">${escapeHtml(e.note||'')}</div>${e.discuss?'<div class="flag">★ Discuss in Therapy</div>':''}<div class="event-actions"><button class="btn" data-action="edit-event" data-event-id="${e.id}">Edit</button><button class="btn danger" data-action="delete-event" data-event-id="${e.id}">Delete</button></div></div>`;}
@@ -1430,7 +1433,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.9').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.10').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 
