@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.12-beta';
+const APP_VERSION = '0.5.13-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -643,6 +643,48 @@ function getSelectedEntry() {
   const w=appState.currentWeek; if(!w) return null;
   return w.days[selectedDateStr()] || null;
 }
+function isViewingPastWeek(){
+  return !!(appState.profile && appState.currentWeek && appState.currentWeek.id!==appState.profile.currentWeekId);
+}
+function pastWeekBanner(){
+  if(!isViewingPastWeek()) return '';
+  const w=appState.currentWeek;
+  return `<div class="notice past-week-banner"><div><strong>Viewing a previous therapy week</strong><div class="small">${escapeHtml(fmtDate(w.startDate))} – ${escapeHtml(fmtDate(w.endDate))}. You can finish or correct daily entries and export this week&apos;s therapist PDF.</div></div><button class="btn" data-action="return-current-week">Return to Current Week</button></div>`;
+}
+async function openWeekContext(id,nav='review'){
+  if(!id || !appState.profile?.weekIds?.includes(id)) return;
+  await appState.saveChain;
+  const w=await loadRecord(`week:${id}`);
+  if(!w){alert('That therapy week could not be opened.');return;}
+  appState.currentWeek=w;
+  const dates=selectableDates(w);
+  appState.selectedDate=w.days[todayStr()]?todayStr():(dates.at(-1)||Object.keys(w.days||{}).sort()[0]||null);
+  appState.modal=null;
+  appState.page=null;
+  appState.nav=nav;
+  appState.reviewEventFilter='all';
+  render({resetScroll:true});
+}
+async function returnToCurrentWeek(nav='home'){
+  const id=appState.profile?.currentWeekId; if(!id) return;
+  await appState.saveChain;
+  const w=await loadRecord(`week:${id}`);
+  if(!w){alert('The current therapy week could not be opened.');return;}
+  appState.currentWeek=w;
+  const dates=selectableDates(w);
+  appState.selectedDate=w.days[todayStr()]?todayStr():(dates.at(-1)||Object.keys(w.days||{}).sort()[0]||null);
+  appState.modal=null;
+  appState.page=null;
+  appState.nav=nav;
+  appState.reviewEventFilter='all';
+  render({resetScroll:true});
+}
+async function loadWeekForAction(id){
+  if(!id) return null;
+  await appState.saveChain;
+  if(appState.currentWeek?.id===id) return structuredClone(appState.currentWeek);
+  return await loadRecord(`week:${id}`);
+}
 function moveSelectedDay(delta){
   const dates=selectableDates(); if(!dates.length) return;
   const current=selectedDateStr(); const i=Math.max(0,dates.indexOf(current)); const next=Math.min(dates.length-1,Math.max(0,i+delta));
@@ -844,6 +886,7 @@ function renderAppShell() {
   const w=appState.currentWeek; const day=getSelectedEntry();
   const nav=appState.nav;
   const initialSetup=appState.profile?.initialSetupComplete===false;
+  const past=isViewingPastWeek();
   let body='';
   if(initialSetup) body=renderInitialSetup();
   else if(appState.page==='week-setup') body=renderWeekSetup();
@@ -859,21 +902,43 @@ function renderAppShell() {
   else body=renderMore();
   const title=initialSetup?'Initial Setup':(appState.page ? ({'week-setup':'Week Setup','setup-guide':'Setup Guide','archive':'Archive','skills':'RO Skills','guided-practices':'Guided Practices','settings':'Settings'}[appState.page]) : 'RO-DBT Diary');
   return `<div class="app-shell">
-    <header class="topbar"><div class="topbar-row"><div class="brand">${title}</div><div class="status-pill">${initialSetup?'Private • Local':(day?.completed?`${day.date===todayStr()?'Today':fmtDay(day.date)} complete`:'Private • Local')}</div></div></header>
-    <main class="content">${body}${appState.saveError?`<div class="notice">Save problem: ${escapeHtml(appState.saveError)}</div>`:''}</main>
+    <header class="topbar"><div class="topbar-row"><div class="brand">${title}</div><div class="status-pill">${initialSetup?'Private • Local':past?'Past week':(day?.completed?`${day.date===todayStr()?'Today':fmtDay(day.date)} complete`:'Private • Local')}</div></div></header>
+    <main class="content">${pastWeekBanner()}${body}${appState.saveError?`<div class="notice">Save problem: ${escapeHtml(appState.saveError)}</div>`:''}</main>
     ${initialSetup||appState.page?'':renderNav(nav)}
   </div>`;
 }
-function renderNav(nav){ return `<nav class="bottom-nav"><div class="bottom-nav-inner">
-  <button class="nav-btn ${nav==='home'?'active':''}" data-nav="home">Home</button>
-  <button class="nav-btn ${nav==='today'?'active':''}" data-nav="today">Today</button>
-  <button class="nav-btn ${nav==='se'?'active':''}" data-nav="se">Self-Enquiry</button>
-  <button class="nav-btn ${nav==='review'?'active':''}" data-nav="review">Review</button>
-  <button class="nav-btn ${nav==='more'?'active':''}" data-nav="more">More</button>
-</div></nav>`; }
+function renderNav(nav){
+  if(isViewingPastWeek()) return `<nav class="bottom-nav"><div class="bottom-nav-inner past-week-nav">
+    <button class="nav-btn ${nav==='home'?'active':''}" data-nav="home">Home</button>
+    <button class="nav-btn ${nav==='today'?'active':''}" data-nav="today">Daily Entries</button>
+    <button class="nav-btn ${nav==='review'?'active':''}" data-nav="review">Review</button>
+    <button class="nav-btn ${nav==='more'?'active':''}" data-nav="more">More</button>
+  </div></nav>`;
+  return `<nav class="bottom-nav"><div class="bottom-nav-inner">
+    <button class="nav-btn ${nav==='home'?'active':''}" data-nav="home">Home</button>
+    <button class="nav-btn ${nav==='today'?'active':''}" data-nav="today">Today</button>
+    <button class="nav-btn ${nav==='se'?'active':''}" data-nav="se">Self-Enquiry</button>
+    <button class="nav-btn ${nav==='review'?'active':''}" data-nav="review">Review</button>
+    <button class="nav-btn ${nav==='more'?'active':''}" data-nav="more">More</button>
+  </div></nav>`;
+}
 
 function renderHome(){
   const w=appState.currentWeek;
+  if(isViewingPastWeek()){
+    const dates=weekDates(w); const complete=dates.filter(d=>w.days[d].completed).length;
+    return `<h1 class="page-title">Past Week</h1><div class="subtle">Review, finish, or export this therapy week.</div>
+      <section class="card home-summary"><div class="card-body">
+        <div class="home-summary-date">${escapeHtml(fmtDate(w.startDate))} – ${escapeHtml(fmtDate(w.endDate))}</div>
+        <div class="list-row"><span>Completed days</span><strong>${complete} of ${dates.length}</strong></div>
+      </div></section>
+      <div class="home-grid">
+        <button class="home-tile" data-nav="today"><strong>Daily Entries</strong><span>Finish or correct ratings, skills, and notes from this week.</span></button>
+        <button class="home-tile" data-nav="review"><strong>Review & Export</strong><span>Review this week and export its therapist PDF.</span></button>
+        <button class="home-tile" data-page="archive"><strong>Archive</strong><span>Choose another therapy week.</span></button>
+        <button class="home-tile" data-action="return-current-week"><strong>Current Week</strong><span>Return to the active therapy week.</span></button>
+      </div>`;
+  }
   const today=w.days[todayStr()] || getSelectedEntry();
   const status=today?.completed?'Complete':'Incomplete';
   return `<h1 class="page-title">Home</h1><div class="subtle">Choose where you want to go.</div>
@@ -912,7 +977,7 @@ function renderDayNavigator(w,day){
 
 function renderClinicalDailyField(field,day){const val=clinicalValue(day,field.id);if(field.type==='yn')return `<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(field.label)}</div></div><div class="scale yesno"><button class="score-btn ${val===false?'selected':''}" data-clinical-target="${field.id}" data-value="false">No</button><button class="score-btn ${val===true?'selected':''}" data-clinical-target="${field.id}" data-value="true">Yes</button></div></div>`;return `<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(field.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${val===n?'selected':''}" data-clinical-target="${field.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`;}
 function renderClinicalDailySection(w,day){if(!w.riskTrackingEnabled)return '';return `<section class="card"><div class="card-header"><div class="section-kicker">Optional clinical tracking</div><div class="section-title">Risk, Medication & Substance</div></div><div class="card-body"><div class="subtle small">These fields mirror the optional Houston/Lynch-style diary-card items. Unanswered remains blank. RO-DBT Diary is not monitored and does not alert your therapist or emergency services.</div>${CLINICAL_DAILY_FIELDS.map(f=>renderClinicalDailyField(f,day)).join('')}</div></section>`;}
-function renderMajorOCThemeContext(w){if(!w.majorOCThemeEnabled)return '';return `<section class="card"><div class="card-header"><div class="section-kicker">Weekly context</div><div class="section-title">Major OC Theme</div></div><div class="card-body"><div>${escapeHtml(w.majorOCTheme||'Not entered for this week.')}</div><div class="subtle small" style="margin-top:8px">This is one weekly value and is the same on every day of this therapy week. Edit it in Week Setup.</div></div></section>`;}
+function renderMajorOCThemeContext(w){if(!w.majorOCThemeEnabled)return '';const note=isViewingPastWeek()?'This is the weekly value saved with this therapy week.':'This is one weekly value and is the same on every day of this therapy week. Edit it in Week Setup.';return `<section class="card"><div class="card-header"><div class="section-kicker">Weekly context</div><div class="section-title">Major OC Theme</div></div><div class="card-body"><div>${escapeHtml(w.majorOCTheme||'Not entered for this week.')}</div><div class="subtle small" style="margin-top:8px">${escapeHtml(note)}</div></div></section>`;}
 function renderProcessRatingsEntry(w){if(!w.therapyProcessEnabled)return '';const vals=w.therapyProcess||blankTherapyProcess();return `<section class="card"><div class="card-header"><div class="section-kicker">Before therapy · Weekly</div><div class="section-title">Therapy Alliance & Process</div></div><div class="card-body"><div class="subtle small">Complete these 0–5 ratings once for the week, just prior to therapy. Weekly Review shows the same values in a read-only summary.</div>${THERAPY_PROCESS_FIELDS.map(f=>`<div class="target-row"><div class="target-head"><div class="target-name">${escapeHtml(f.label)}</div></div><div class="scale">${[0,1,2,3,4,5].map(n=>`<button class="score-btn ${vals[f.id]===n?'selected':''}" data-process-target="${f.id}" data-value="${n}">${n}</button>`).join('')}</div></div>`).join('')}</div></section>`;}
 function renderProcessRatingsReview(w){if(!w.therapyProcessEnabled)return '';const vals=w.therapyProcess||blankTherapyProcess();return `<section class="card"><div class="card-header"><div class="section-kicker">Before therapy · Weekly</div><div class="section-title">Therapy Alliance & Process</div></div><div class="card-body"><div class="subtle small">Weekly 0–5 ratings · — = not entered</div><div class="process-review-list">${THERAPY_PROCESS_FIELDS.map(f=>`<div class="list-row process-review-row"><span>${escapeHtml(f.label)}</span><strong class="process-review-value">${vals[f.id]??'—'}</strong></div>`).join('')}</div></div></section>`;}
 
@@ -928,7 +993,7 @@ function renderToday(day) {
     <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body"><div class="checkbox-list">
       ${focusSkills.map(s=>`<div class="skill-select-row"><label class="check-row skill-check"><input type="checkbox" data-skill="${s.id}" ${day.skills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label><button class="info-btn" aria-label="About ${escapeHtml(s.name)}" data-skill-info="${s.id}">i</button></div>`).join('')}
     </div><button class="btn soft wide" style="margin-top:10px" data-action="other-skill">+ Other RO Skill</button></div></section>
-    <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry focus</div></div><div class="card-body"><div>${escapeHtml(w.weeklySEFocus||'No weekly focus question entered.')}</div><div class="btn-row" style="margin-top:12px"><button class="btn soft" data-action="go-se">Find an SE Question</button><button class="btn" data-action="saved-questions">Saved Questions</button></div></div></section>
+    <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry focus</div></div><div class="card-body"><div>${escapeHtml(w.weeklySEFocus||'No weekly focus question entered.')}</div>${isViewingPastWeek()?'':`<div class="btn-row" style="margin-top:12px"><button class="btn soft" data-action="go-se">Find an SE Question</button><button class="btn" data-action="saved-questions">Saved Questions</button></div>`}</div></section>
     <section class="card"><div class="card-header"><div class="section-kicker">Notes / Events</div></div><div class="card-body">
       ${day.events.length?day.events.map(e=>renderEvent(e)).join(''):'<div class="subtle">No events recorded today.</div>'}
       <button class="btn soft wide" style="margin-top:10px" data-action="add-event">+ Add Note / Event</button></div></section>
@@ -1031,11 +1096,11 @@ function renderGuidedPractices(){
     </div></section>`;
 }
 
-function renderMore(){ const p=appState.profile; return `<h1 class="page-title">More</h1><section class="card"><div class="card-body menu-list">
-  <button class="btn" data-page="week-setup">Week Setup</button><button class="btn" data-page="setup-guide">How to Set Up Your Diary Card</button><button class="btn" data-page="guided-practices">Guided Practices</button><button class="btn" data-page="archive">Archive</button><button class="btn" data-page="skills">RO Skills Reference</button><button class="btn" data-page="settings">Settings</button>
+function renderMore(){ const p=appState.profile; const weekSetup=isViewingPastWeek()?'':`<button class="btn" data-page="week-setup">Week Setup</button>`; return `<h1 class="page-title">More</h1><section class="card"><div class="card-body menu-list">
+  ${weekSetup}<button class="btn" data-page="setup-guide">How to Set Up Your Diary Card</button><button class="btn" data-page="guided-practices">Guided Practices</button><button class="btn" data-page="archive">Archive</button><button class="btn" data-page="skills">RO Skills Reference</button><button class="btn" data-page="settings">Settings</button>${isViewingPastWeek()?'<button class="btn soft" data-action="return-current-week">Return to Current Week</button>':''}
  </div></section><section class="card"><div class="card-body"><div class="list-row"><strong>Last encrypted backup</strong><span class="small">${p.lastBackupAt?new Date(p.lastBackupAt).toLocaleString():'None yet'}</span></div><button class="btn primary wide" style="margin-top:10px" data-action="backup">Create Encrypted Backup</button><button class="btn wide" style="margin-top:8px" data-action="restore">Restore Backup</button></div></section><section class="card"><div class="card-header"><div class="section-kicker">Reset</div></div><div class="card-body"><div class="subtle">Start this browser's diary over from Initial Setup. Your 4-digit passcode and imported Loving Kindness audio are kept.</div><button class="btn danger wide" style="margin-top:10px" data-action="reset-app-data">Reset App Data…</button></div></section><div class="subtle">RO-DBT Diary ${APP_VERSION}. Data stays on this device unless you deliberately export it.</div>`;}
 
-function renderWeekSetup(){const w=appState.currentWeek; return `<div class="btn-row"><button class="btn" data-action="back-page">← Back</button><button class="btn soft" data-page="setup-guide">Setup Guide</button></div><h1 class="page-title">Week Setup</h1><div class="subtle">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
+function renderWeekSetup(){const w=appState.currentWeek; if(isViewingPastWeek())return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Week Setup</h1><div class="notice">Past therapy-week setup is preserved as historical context. You can edit the daily entries for a past week, but target definitions and weekly setup stay fixed.</div><button class="btn primary wide" data-action="return-current-week">Return to Current Week</button>`; return `<div class="btn-row"><button class="btn" data-action="back-page">← Back</button><button class="btn soft" data-page="setup-guide">Setup Guide</button></div><h1 class="page-title">Week Setup</h1><div class="subtle">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div>
  ${w.setupStatus==='pending'?'<div class="notice">This new week copied the prior week&apos;s setup. Review anything that changed in therapy, then finish setup.</div>':''}
  <section class="card"><div class="card-header"><div class="section-kicker">Private targets</div></div><div class="card-body">${renderTargetEditors(w.privateTargets,'private')}<button class="btn soft wide" data-action="add-target" data-kind="private">+ Add Private Target</button></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Social signals</div></div><div class="card-body">${renderTargetEditors(w.socialTargets,'social')}<button class="btn soft wide" data-action="add-target" data-kind="social">+ Add Social Target</button></div></section>
@@ -1089,7 +1154,7 @@ function renderSetupGuide(){return `<button class="btn" data-action="back-guide"
 
 function renderTargetEditors(targets,kind){return targets.map(t=>`<div class="inline-edit"><div class="inline-edit-row"><input data-target-label="${t.id}" data-kind="${kind}" value="${escapeHtml(t.label)}"><select data-target-type="${t.id}" data-kind="${kind}"><option value="scale" ${t.type==='scale'?'selected':''}>0–5</option><option value="yn" ${t.type==='yn'?'selected':''}>Y/N</option></select><button class="btn danger" data-delete-target="${t.id}" data-kind="${kind}">×</button></div><textarea data-target-def="${t.id}" data-kind="${kind}" class="small">${escapeHtml(t.definition||'')}</textarea></div>`).join('');}
 
-function renderArchive(){const ids=[...appState.profile.weekIds].reverse(); return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Archive</h1><section class="card"><div class="card-body" id="archive-list">${ids.map(id=>`<div class="list-row" data-week-id="${id}"><span>Week ${escapeHtml(id.slice(0,8))}</span><button class="btn" data-action="open-archive" data-week-id="${id}">Open</button></div>`).join('')}</div></section>`;}
+function renderArchive(){const ids=[...appState.profile.weekIds].reverse(); return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Archive</h1><div class="subtle">Open any therapy week to review it, export its therapist PDF, or continue unfinished daily entries.</div><section class="card"><div class="card-body" id="archive-list">${ids.map(id=>`<div class="list-row" data-week-id="${id}"><span>Week ${escapeHtml(id.slice(0,8))}</span><button class="btn" data-action="open-archive" data-week-id="${id}">Open</button></div>`).join('')}</div></section>`;}
 
 function renderSkillsReference(){return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">RO Skills Reference</h1><div class="subtle">Quick reference only. Use your RO-DBT manual and class materials for the full skill.</div><section class="card"><div class="card-body">${SKILLS.filter(s=>s.id!=='fixed-fatalistic').map(s=>`<div class="skill-reference-row"><div><strong>${escapeHtml(s.name)}</strong><div class="small subtle">${escapeHtml(s.reference||'')}</div><div class="small" style="margin-top:4px">${escapeHtml(s.purpose)}</div></div><button class="info-btn" aria-label="About ${escapeHtml(s.name)}" data-skill-info="${s.id}">i</button></div>`).join('')}</div></section>`;}
 
@@ -1164,7 +1229,7 @@ function renderModal(){
   return '';
 }
 
-function renderArchiveModal(w){const dates=weekDates(w); const canDelete=w.id!==appState.currentWeek.id; const optional=`${w.riskTrackingEnabled?`<div class="section-kicker" style="margin-top:14px">Risk / Medication / Substance</div><div class="table-wrap"><table><thead><tr><th>Field</th>${dates.map(d=>`<th>${fmtDay(d)}</th>`).join('')}</tr></thead><tbody>${CLINICAL_DAILY_FIELDS.map(f=>`<tr><td>${escapeHtml(f.label)}</td>${dates.map(d=>{const v=clinicalValue(w.days[d],f.id);return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`:''}${w.majorOCThemeEnabled?`<div class="section-kicker" style="margin-top:14px">Major OC Theme</div><div>${escapeHtml(w.majorOCTheme||'—')}</div>`:''}${w.therapyProcessEnabled?`<div class="section-kicker" style="margin-top:14px">Therapy Alliance / Process</div>${THERAPY_PROCESS_FIELDS.map(f=>`<div class="list-row"><span>${escapeHtml(f.label)}</span><strong>${w.therapyProcess?.[f.id]??'—'}</strong></div>`).join('')}`:''}`;return `<div class="modal-backdrop"><div class="modal"><h2>${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</h2><div class="section-kicker">Private</div>${renderRatingsTable(w.privateTargets,w)}<div class="section-kicker" style="margin-top:14px">Social</div>${renderRatingsTable(w.socialTargets,w)}${optional}<div class="section-kicker" style="margin-top:14px">Discuss in Therapy</div>${dates.flatMap(d=>w.days[d].events.filter(e=>e.discuss).map(e=>`<div class="event-card"><strong>${fmtDay(d)} — ${escapeHtml(e.context)}</strong><div>${escapeHtml(e.note)}</div></div>`)).join('')||'<div class="subtle">None flagged.</div>'}<button class="btn primary wide" style="margin-top:12px" data-action="close-modal">Close</button>${canDelete?`<button class="btn danger wide" style="margin-top:8px" data-action="request-delete-week" data-week-id="${w.id}">Delete This Week…</button>`:''}</div></div>`;}
+function renderArchiveModal(w){const dates=weekDates(w); const isCurrent=w.id===appState.profile.currentWeekId; const canDelete=!isCurrent; const optional=`${w.riskTrackingEnabled?`<div class="section-kicker" style="margin-top:14px">Risk / Medication / Substance</div><div class="table-wrap"><table><thead><tr><th>Field</th>${dates.map(d=>`<th>${fmtDay(d)}</th>`).join('')}</tr></thead><tbody>${CLINICAL_DAILY_FIELDS.map(f=>`<tr><td>${escapeHtml(f.label)}</td>${dates.map(d=>{const v=clinicalValue(w.days[d],f.id);return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`:''}${w.majorOCThemeEnabled?`<div class="section-kicker" style="margin-top:14px">Major OC Theme</div><div>${escapeHtml(w.majorOCTheme||'—')}</div>`:''}${w.therapyProcessEnabled?`<div class="section-kicker" style="margin-top:14px">Therapy Alliance / Process</div>${THERAPY_PROCESS_FIELDS.map(f=>`<div class="list-row"><span>${escapeHtml(f.label)}</span><strong>${w.therapyProcess?.[f.id]??'—'}</strong></div>`).join('')}`:''}`;return `<div class="modal-backdrop"><div class="modal"><h2>${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</h2>${isCurrent?'<div class="subtle small">Current therapy week</div>':'<div class="subtle small">Past therapy week · daily entries can still be edited</div>'}<div class="section-kicker" style="margin-top:14px">Private</div>${renderRatingsTable(w.privateTargets,w)}<div class="section-kicker" style="margin-top:14px">Social</div>${renderRatingsTable(w.socialTargets,w)}${optional}<div class="section-kicker" style="margin-top:14px">Discuss in Therapy</div>${dates.flatMap(d=>w.days[d].events.filter(e=>e.discuss).map(e=>`<div class="event-card"><strong>${fmtDay(d)} — ${escapeHtml(e.context)}</strong><div>${escapeHtml(e.note)}</div></div>`)).join('')||'<div class="subtle">None flagged.</div>'}<button class="btn primary wide" style="margin-top:12px" data-action="open-week-context" data-week-id="${w.id}">${isCurrent?'Open Current Week':'Open / Edit This Week'}</button><button class="btn wide" style="margin-top:8px" data-action="export-week-report" data-week-id="${w.id}">Export Therapist PDF</button><button class="btn wide" style="margin-top:8px" data-action="close-modal">Close</button>${canDelete?`<button class="btn danger wide" style="margin-top:8px" data-action="request-delete-week" data-week-id="${w.id}">Delete This Week…</button>`:''}</div></div>`;}
 
 function renderPrintRatingsTable(targets,w){const dates=weekDates(w);return `<table class="report-table"><thead><tr><th>Target</th>${dates.map(d=>`<th>${fmtDay(d)}<br><span>${fmtDate(d,{month:'numeric',day:'numeric'})}</span></th>`).join('')}</tr></thead><tbody>${targets.map(t=>`<tr><td>${escapeHtml(t.label)}</td>${dates.map(d=>{const v=targetValue(w.days[d],t.id);return `<td>${v===null?'—':typeof v==='boolean'?(v?'Y':'N'):v}</td>`;}).join('')}</tr>`).join('')}</tbody></table>`;}
 function renderPrintCompletion(w){const dates=weekDates(w);return `<table class="report-table completion-table"><thead><tr>${dates.map(d=>`<th>${fmtDay(d)}<br><span>${fmtDate(d,{month:'numeric',day:'numeric'})}</span></th>`).join('')}</tr></thead><tbody><tr>${dates.map(d=>`<td>${w.days[d].completed?'Complete':'Incomplete'}</td>`).join('')}</tr></tbody></table>`;}
@@ -1255,8 +1320,8 @@ function pdfFilenameBase(date=new Date()){
   const name=filenameSafePart(appState.profile?.pdfName||'');
   return `RO-DBT-Diary${name?`-${name}`:''}-${stamp}`;
 }
-function buildPdfReportData(){
-  const w=appState.currentWeek; const dates=weekDates(w);
+function buildPdfReportData(w=appState.currentWeek){
+  const dates=weekDates(w);
   const ratingRows=targets=>targets.map(t=>[t.label,...dates.map(d=>{const v=targetValue(w.days[d],t.id);return v===null?'—':typeof v==='boolean'?(v?'Y':'N'):String(v);})]);
   const completion=dates.map(d=>({day:fmtDay(d),date:fmtDate(d,{month:'numeric',day:'numeric'}),status:w.days[d].completed?'Complete':'Incomplete'}));
   const usedSkills=SKILLS.filter(s=>dates.some(d=>w.days[d].skills.includes(s.id))).map(s=>({name:s.name,days:dates.filter(d=>w.days[d].skills.includes(s.id)).map(fmtDay)}));
@@ -1287,11 +1352,11 @@ function buildPdfReportData(){
     generated:`Generated locally by RO-DBT Diary ${APP_VERSION} • ${new Date().toLocaleString()}`
   };
 }
-async function printTherapistReport(){
+async function printTherapistReport(w=appState.currentWeek){
   try{
     if(!window.RODiaryPDF?.buildPdfBytes) throw new Error('PDF export component is unavailable.');
     const filename=`${pdfFilenameBase()}.pdf`;
-    const bytes=window.RODiaryPDF.buildPdfBytes(buildPdfReportData());
+    const bytes=window.RODiaryPDF.buildPdfBytes(buildPdfReportData(w));
     const blob=new Blob([bytes],{type:'application/pdf'});
     const file=new File([blob],filename,{type:'application/pdf'});
     if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
@@ -1363,7 +1428,10 @@ async function handleAction(a,b){
   if(a==='delete-my-question'){const id=b.dataset.questionId;if(confirm('Delete this question from My Question Library?')){appState.profile.myQuestions=appState.profile.myQuestions.filter(q=>q.id!==id);queueSaveProfile();appState.modal={type:'saved-questions'};render();}return;}
   if(a==='add-my-question'){appState.modal={type:'my-question'};render();return;}
   if(a==='save-my-question'){const text=$('#my-question-text')?.value.trim();if(text){appState.profile.myQuestions.push({id:uid(),text,createdAt:new Date().toISOString()});queueSaveProfile();}appState.modal=null;render();return;}
-  if(a==='print-report'){printTherapistReport();return;}
+  if(a==='return-current-week'){await returnToCurrentWeek();return;}
+  if(a==='open-week-context'){await openWeekContext(b.dataset.weekId,'review');return;}
+  if(a==='export-week-report'){const w=await loadWeekForAction(b.dataset.weekId);if(!w){alert('That therapy week could not be opened.');return;}await printTherapistReport(w);return;}
+  if(a==='print-report'){await printTherapistReport();return;}
   if(a==='backup'){appState.modal={type:'backup-password',error:''};render({preserveScroll:true});return;}
   if(a==='do-backup'){await createBackupFromModal();return;}
   if(a==='restore'){pickRestoreFile();return;}
@@ -1374,8 +1442,8 @@ async function handleAction(a,b){
   if(a==='change-pin'){appState.modal={type:'change-pin',error:''};render({preserveScroll:true});return;}
   if(a==='do-change-pin'){await changePinFromModal();return;}
   if(a==='add-target'){const kind=b.dataset.kind;const arr=kind==='private'?appState.currentWeek.privateTargets:appState.currentWeek.socialTargets;arr.push({id:uid(),label:'New Target',definition:'',type:'scale',order:arr.length});queueSaveWeek();render();return;}
-  if(a==='open-archive'){const w=await loadRecord(`week:${b.dataset.weekId}`);appState.modal={type:'archive-view',week:w};render();return;}
-  if(a==='request-delete-week'){const w=await loadRecord(`week:${b.dataset.weekId}`);if(!w||w.id===appState.currentWeek.id)return;appState.modal={type:'delete-week',week:w};render();return;}
+  if(a==='open-archive'){const w=await loadWeekForAction(b.dataset.weekId);if(!w){alert('That therapy week could not be opened.');return;}appState.modal={type:'archive-view',week:w};render();return;}
+  if(a==='request-delete-week'){const w=await loadWeekForAction(b.dataset.weekId);if(!w||w.id===appState.profile.currentWeekId)return;appState.modal={type:'delete-week',week:w};render();return;}
   if(a==='confirm-delete-week'){await deleteArchivedWeek(b.dataset.weekId);return;}
 }
 function completeDay(d){d.completed=true;d.completedAt=new Date().toISOString();d.modifiedAt=d.completedAt;queueSaveWeek();appState.modal=null;render({preserveScroll:true});}
@@ -1410,17 +1478,19 @@ async function removeGuidedLkmAudio(){
 }
 
 async function deleteArchivedWeek(id){
-  if(!id || id===appState.currentWeek.id){alert('The current therapy week cannot be deleted.');return;}
+  if(!id || id===appState.profile.currentWeekId){alert('The current therapy week cannot be deleted.');return;}
   await appState.saveChain;
+  const deletingViewedWeek=id===appState.currentWeek?.id;
   const week=await loadRecord(`week:${id}`); if(!week){appState.modal=null;render();return;}
   await idbDelete('records',`week:${id}`);
   appState.profile.weekIds=appState.profile.weekIds.filter(x=>x!==id);
   appState.profile.modifiedAt=new Date().toISOString();
   await saveRecord('profile',appState.profile);
+  if(deletingViewedWeek){await returnToCurrentWeek('more');return;}
   appState.modal=null; appState.page='archive'; appState.nav='more'; render(); hydrateArchiveLabels();
 }
 
-async function hydrateArchiveLabels(){const rows=$$('[data-week-id]');for(const row of rows){const id=row.dataset.weekId;const w=await loadRecord(`week:${id}`);if(w){const span=row.querySelector('span');span.textContent=`${fmtDate(w.startDate)} – ${fmtDate(w.endDate)} ${w.id===appState.currentWeek.id?'(Current)':w.archived?'':'(Past)'}`;}}}
+async function hydrateArchiveLabels(){const rows=$$('[data-week-id]');for(const row of rows){const id=row.dataset.weekId;const w=await loadRecord(`week:${id}`);if(w){const span=row.querySelector('span');span.textContent=`${fmtDate(w.startDate)} – ${fmtDate(w.endDate)} ${w.id===appState.profile.currentWeekId?'(Current)':w.archived?'':'(Past)'}`;}}}
 
 async function collectPortableData(){ const profile=structuredClone(appState.profile); const weeks=[]; for(const id of profile.weekIds){const w= id===appState.currentWeek.id ? structuredClone(appState.currentWeek) : await loadRecord(`week:${id}`); if(w) weeks.push(w);} return {format:'ro-diary-data',version:1,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),profile,weeks}; }
 function validatePortableData(data){if(!data||data.format!=='ro-diary-data'||data.version!==1||!data.profile||!Array.isArray(data.weeks))throw new Error('This is not a supported RO-DBT Diary backup.');if(!data.profile.currentWeekId||!Array.isArray(data.profile.weekIds))throw new Error('Backup profile is incomplete.');for(const w of data.weeks){if(!w.id||!w.startDate||!w.endDate||!w.days||!Array.isArray(w.privateTargets)||!Array.isArray(w.socialTargets))throw new Error('A therapy week in the backup is invalid.');for(const d of Object.values(w.days)){if(!d.date||!d.ratings||!Array.isArray(d.skills)||!Array.isArray(d.events))throw new Error('A daily entry in the backup is invalid.');for(const v of Object.values(d.ratings)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A rating in the backup is invalid.');}if(d.clinical){for(const v of Object.values(d.clinical)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A clinical tracking value in the backup is invalid.');}}}if(w.therapyProcess){for(const v of Object.values(w.therapyProcess)){if(v!==null && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A therapy-process rating in the backup is invalid.');}}}return true;}
@@ -1475,7 +1545,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.12').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.13').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 

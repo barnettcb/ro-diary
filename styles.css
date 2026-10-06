@@ -274,3 +274,14 @@ html, body, #app {
 .process-review-row { align-items: flex-start; }
 .process-review-row > span { flex: 1 1 auto; min-width: 0; line-height: 1.35; }
 .process-review-value { flex: 0 0 auto; min-width: 24px; text-align: center; font-size: 15px; }
+
+
+/* 0.5.13: previous-week review/edit mode */
+.past-week-nav { grid-template-columns: repeat(4, 1fr); }
+.past-week-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.past-week-banner > div { min-width:0; }
+.past-week-banner .btn { flex:0 0 auto; min-height:38px; padding:7px 10px; }
+@media (max-width:520px) {
+  .past-week-banner { align-items:stretch; flex-direction:column; }
+  .past-week-banner .btn { width:100%; }
+}
