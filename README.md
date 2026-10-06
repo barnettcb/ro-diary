@@ -1,8 +1,8 @@
-# RO-DBT Diary Beta 0.5.13
+# RO-DBT Diary Beta 0.5.14
 
 Local-first RO-DBT diary card PWA.
 
-## Changes in 0.5.13
+## Changes in 0.5.14
 
 - Added full access to prior therapy weeks after they close.
 - Archive now lets a user open any past week, continue unfinished daily entries, and export that week's therapist PDF.
@@ -15,3 +15,8 @@ Local-first RO-DBT diary card PWA.
 ## Update notes
 
 Upload the contents of this release folder over the existing GitHub Pages repository files. Existing encrypted local diary data is preserved.
+
+## 0.5.14-beta
+- Archive week rows now show the therapy-week date range instead of an internal random week ID.
+- Each row also shows Current/Past status and completed-day count.
+- Archive labels hydrate automatically on every Archive render, including returns/re-renders, so internal IDs are never used as the visible fallback.

@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.13-beta';
+const APP_VERSION = '0.5.14-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -786,6 +786,7 @@ function render(options={}) {
   root.dataset.viewKey=nextViewKey;
   root.dataset.modalKey=nextModalKey;
   bindApp();
+  if(appState.page==='archive') queueMicrotask(()=>hydrateArchiveLabels());
 
   // Any re-render that remains on the same logical screen keeps the user's
   // position automatically. Navigation to a different screen/day still starts
@@ -1154,7 +1155,7 @@ function renderSetupGuide(){return `<button class="btn" data-action="back-guide"
 
 function renderTargetEditors(targets,kind){return targets.map(t=>`<div class="inline-edit"><div class="inline-edit-row"><input data-target-label="${t.id}" data-kind="${kind}" value="${escapeHtml(t.label)}"><select data-target-type="${t.id}" data-kind="${kind}"><option value="scale" ${t.type==='scale'?'selected':''}>0–5</option><option value="yn" ${t.type==='yn'?'selected':''}>Y/N</option></select><button class="btn danger" data-delete-target="${t.id}" data-kind="${kind}">×</button></div><textarea data-target-def="${t.id}" data-kind="${kind}" class="small">${escapeHtml(t.definition||'')}</textarea></div>`).join('');}
 
-function renderArchive(){const ids=[...appState.profile.weekIds].reverse(); return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Archive</h1><div class="subtle">Open any therapy week to review it, export its therapist PDF, or continue unfinished daily entries.</div><section class="card"><div class="card-body" id="archive-list">${ids.map(id=>`<div class="list-row" data-week-id="${id}"><span>Week ${escapeHtml(id.slice(0,8))}</span><button class="btn" data-action="open-archive" data-week-id="${id}">Open</button></div>`).join('')}</div></section>`;}
+function renderArchive(){const ids=[...appState.profile.weekIds].reverse(); return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Archive</h1><div class="subtle">Open any therapy week to review it, export its therapist PDF, or continue unfinished daily entries.</div><section class="card"><div class="card-body" id="archive-list">${ids.map(id=>`<div class="list-row archive-week-row" data-week-id="${id}"><span class="archive-week-label"><strong>Loading therapy week…</strong></span><button class="btn" data-action="open-archive" data-week-id="${id}">Open</button></div>`).join('')}</div></section>`;}
 
 function renderSkillsReference(){return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">RO Skills Reference</h1><div class="subtle">Quick reference only. Use your RO-DBT manual and class materials for the full skill.</div><section class="card"><div class="card-body">${SKILLS.filter(s=>s.id!=='fixed-fatalistic').map(s=>`<div class="skill-reference-row"><div><strong>${escapeHtml(s.name)}</strong><div class="small subtle">${escapeHtml(s.reference||'')}</div><div class="small" style="margin-top:4px">${escapeHtml(s.purpose)}</div></div><button class="info-btn" aria-label="About ${escapeHtml(s.name)}" data-skill-info="${s.id}">i</button></div>`).join('')}</div></section>`;}
 
@@ -1490,7 +1491,20 @@ async function deleteArchivedWeek(id){
   appState.modal=null; appState.page='archive'; appState.nav='more'; render(); hydrateArchiveLabels();
 }
 
-async function hydrateArchiveLabels(){const rows=$$('[data-week-id]');for(const row of rows){const id=row.dataset.weekId;const w=await loadRecord(`week:${id}`);if(w){const span=row.querySelector('span');span.textContent=`${fmtDate(w.startDate)} – ${fmtDate(w.endDate)} ${w.id===appState.profile.currentWeekId?'(Current)':w.archived?'':'(Past)'}`;}}}
+async function hydrateArchiveLabels(){
+  const rows=$$('#archive-list [data-week-id]');
+  for(const row of rows){
+    const id=row.dataset.weekId;
+    const w=await loadRecord(`week:${id}`);
+    const label=row.querySelector('.archive-week-label');
+    if(!label) continue;
+    if(!w){label.innerHTML='<strong>Therapy week unavailable</strong><small class="subtle">The saved week could not be opened.</small>';continue;}
+    const dates=weekDates(w);
+    const completed=dates.filter(d=>w.days?.[d]?.completed).length;
+    const status=w.id===appState.profile.currentWeekId?'Current week':'Past week';
+    label.innerHTML=`<strong>${escapeHtml(fmtDate(w.startDate))} – ${escapeHtml(fmtDate(w.endDate))}</strong><small class="subtle">${status} · ${completed} of ${dates.length} days complete</small>`;
+  }
+}
 
 async function collectPortableData(){ const profile=structuredClone(appState.profile); const weeks=[]; for(const id of profile.weekIds){const w= id===appState.currentWeek.id ? structuredClone(appState.currentWeek) : await loadRecord(`week:${id}`); if(w) weeks.push(w);} return {format:'ro-diary-data',version:1,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),profile,weeks}; }
 function validatePortableData(data){if(!data||data.format!=='ro-diary-data'||data.version!==1||!data.profile||!Array.isArray(data.weeks))throw new Error('This is not a supported RO-DBT Diary backup.');if(!data.profile.currentWeekId||!Array.isArray(data.profile.weekIds))throw new Error('Backup profile is incomplete.');for(const w of data.weeks){if(!w.id||!w.startDate||!w.endDate||!w.days||!Array.isArray(w.privateTargets)||!Array.isArray(w.socialTargets))throw new Error('A therapy week in the backup is invalid.');for(const d of Object.values(w.days)){if(!d.date||!d.ratings||!Array.isArray(d.skills)||!Array.isArray(d.events))throw new Error('A daily entry in the backup is invalid.');for(const v of Object.values(d.ratings)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A rating in the backup is invalid.');}if(d.clinical){for(const v of Object.values(d.clinical)){if(v!==null && typeof v!=='boolean' && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A clinical tracking value in the backup is invalid.');}}}if(w.therapyProcess){for(const v of Object.values(w.therapyProcess)){if(v!==null && !(Number.isInteger(v)&&v>=0&&v<=5))throw new Error('A therapy-process rating in the backup is invalid.');}}}return true;}
@@ -1545,7 +1559,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.13').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.14').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 
