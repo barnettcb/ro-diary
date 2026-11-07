@@ -1,22 +1,20 @@
-# RO-DBT Diary Beta 0.5.14
+# RO-DBT Diary Beta 0.6.0 — Unified Daily Check-In
 
-Local-first RO-DBT diary card PWA.
+This is a **local-first, encrypted** RO-DBT diary PWA. It is an incremental update to the previously released **0.5.14** app, not a new database or a replacement for existing local records.
 
-## Changes in 0.5.14
+## What changed
 
-- Added full access to prior therapy weeks after they close.
-- Archive now lets a user open any past week, continue unfinished daily entries, and export that week's therapist PDF.
-- Added a clear Past Week mode with a persistent date banner and Return to Current Week control.
-- In Past Week mode, Daily Entries and Weekly Review use the selected historical week's stored data; edits save back only to that week.
-- Target definitions and Week Setup remain fixed for past weeks so historical card structure is not accidentally rewritten.
-- Added direct Export Therapist PDF from the Archive week preview.
-- Preserved 0.5.12 Reset App Data and all earlier functionality.
+- **Today:** All configured private and social targets stay visible with tighter spacing. Meditation is a single Yes/No with optional minutes; missing remains unanswered. No separate daily skills or self-enquiry fields, and no required Save/Complete Day step.
+- **Events:** Growth Practice-style inline editing: title and what happened, plus optional expandable type, feelings, body sensations, thoughts, urges, social signals, results, skills, and therapy/review flags. Existing simple context/note events display in the new editor without deleting their legacy fields.
+- **Home:** A compact Learning & Practice section shows the active therapist-directed learning focus, plus two copyable ChatGPT prompt shortcuts. No manual learning log.
+- **Week Setup:** Enter or change the therapist-directed learning focus. A dated history is retained in the encrypted profile and the focus carries forward when copying the previous week. Existing RO targets, yes/no and 0–5 types, weekly setup, and therapy-week dates remain as before.
+- **Weekly Review:** Preserve the existing review content, add meditation results and complete inline event detail, and replace the visible PDF action with **Export for ChatGPT**. The single JSON download contains the complete seven-day reportable app data, including instructions for retrieving the two relevant ChatGPT Library continuity logs and producing a therapist PDF.
+- **Privacy:** Saved, favorite, and personal Self-Enquiry Question Finder questions are not exported. The weekly JSON is **plaintext** and should be handled as sensitive health information; the original encrypted backup remains separate.
 
-## Update notes
+## Protected functionality
 
-Upload the contents of this release folder over the existing GitHub Pages repository files. Existing encrypted local diary data is preserved.
+Question Finder, saved/favorite/personal questions, Guided Practices and imported audio, PIN unlock, local encrypted storage, encrypted backup/restore, archive/history, existing weekly setup and therapy-process settings remain. The old PDF implementation file is retained in source history as rollback but its main workflow is replaced.
 
-## 0.5.14-beta
-- Archive week rows now show the therapy-week date range instead of an internal random week ID.
-- Each row also shows Current/Past status and completed-day count.
-- Archive labels hydrate automatically on every Archive render, including returns/re-renders, so internal IDs are never used as the visible fallback.
+## Important
+
+GitHub deployment has not yet been performed through this ChatGPT connection (GitHub write operations returned 403). The new implementation has passed JavaScript syntax checks and data-model regression tests, but **has not been verified on the actual iPhone**. Read `UPGRADE-AND-TEST.md` before replacing any published files.

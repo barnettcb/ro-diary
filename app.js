@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.5.14-beta';
+const APP_VERSION = '0.6.0-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -1562,6 +1562,363 @@ async function init(){
   if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.14').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
+
+/* 0.6.0: Unified daily diary + therapist-week ChatGPT export.
+   Intentionally additive around the existing RO-DBT vault, Question Finder,
+   Guided Practices, backup format and therapy-week setup. */
+const originalBuildNewWeek = buildNewWeek;
+buildNewWeek = function(startDate, previous=null, options={}) {
+  const week = originalBuildNewWeek(startDate, previous, options);
+  week.learningFocus = options.blank ? '' : String(previous?.learningFocus || '');
+  week.learningFocusUpdatedAt = options.blank ? null : (previous?.learningFocusUpdatedAt || null);
+  return week;
+};
+const originalLoadAppData = loadAppData;
+loadAppData = async function() {
+  await originalLoadAppData();
+  // Existing vaults need no destructive schema migration. New fields are optional.
+  if (!Array.isArray(appState.profile.learningFocusHistory)) {
+    appState.profile.learningFocusHistory = [];
+    queueSaveProfile();
+  }
+  if (typeof appState.currentWeek.learningFocus !== 'string') {
+    appState.currentWeek.learningFocus = '';
+    queueSaveWeek();
+  }
+};
+
+function diaryDayHasRecord(day) {
+  if (!day) return false;
+  return day.meditationDone === true || day.meditationDone === false ||
+    Object.values(day.ratings || {}).some(v => v !== null && v !== undefined) ||
+    Object.values(day.clinical || {}).some(v => v !== null && v !== undefined) ||
+    (day.events || []).length > 0 || (day.skills || []).length > 0 || !!day.completed;
+}
+function compactSavedStatus(text) {
+  const status = $('#diary-save-status');
+  if (status) {
+    status.textContent = text;
+    status.classList.toggle('save-failed', text.startsWith('Could not'));
+  }
+}
+const originalQueueSaveWeek = queueSaveWeek;
+queueSaveWeek = function() {
+  appState.saveError = null;
+  compactSavedStatus('Saving…');
+  originalQueueSaveWeek();
+  const savedPromise = appState.saveChain;
+  savedPromise.then(() => {
+    if (savedPromise === appState.saveChain) {
+      compactSavedStatus(appState.saveError ? 'Could not save — keep app open' : 'Saved');
+    }
+  });
+};
+
+function meditationSection(day) {
+  const value = day.meditationDone === true ? 'yes' : day.meditationDone === false ? 'no' : '';
+  const minutes = Number.isInteger(day.meditationMinutes) && day.meditationMinutes > 0 ? day.meditationMinutes : '';
+  return `<section class="card meditation-card"><div class="card-body"><div class="compact-section-heading">Meditation <span class="subtle small">One daily answer</span></div>
+    <div class="meditation-controls" role="group" aria-label="Did you meditate?">
+      <button class="score-btn ${value === 'yes' ? 'selected' : ''}" data-meditation="yes" aria-pressed="${value === 'yes'}">Yes</button>
+      <button class="score-btn ${value === 'no' ? 'selected' : ''}" data-meditation="no" aria-pressed="${value === 'no'}">No</button>
+    </div>
+    ${value === 'yes' ? `<label class="meditation-minutes">Minutes (optional) <input type="number" min="1" max="1440" step="1" inputmode="numeric" data-meditation-minutes value="${minutes}" placeholder="10"></label>` : ''}
+  </div></section>`;
+}
+
+function newEmptyEvent() {
+  const now = new Date().toISOString();
+  return {id:uid(),title:'',facts:'',kind:'',emotions:'',body:'',interpretations:'',urges:'',signals:'',results:'',skills:'',discuss:false,flag:false,createdAt:now,modifiedAt:now};
+}
+function eventTitle(e) { return String(e.title || e.context || ''); }
+function eventFacts(e) { return String(e.facts !== undefined ? e.facts : (e.note || '')); }
+function eventField(e, id, label, placeholder) {
+  return `<label class="event-input-label" for="event-${escapeHtml(e.id)}-${id}">${escapeHtml(label)}</label><textarea id="event-${escapeHtml(e.id)}-${id}" class="event-textarea" data-event-field="${id}" data-event-id="${escapeHtml(e.id)}" placeholder="${escapeHtml(placeholder)}">${escapeHtml(e[id] ?? '')}</textarea>`;
+}
+function renderInlineEvent(e, index) {
+  const id = escapeHtml(e.id);
+  const expanded = appState.expandedEventIds?.has(e.id) || false;
+  const kind = e.kind || '';
+  return `<div class="event-card unified-event" data-inline-event="${id}">
+    <div class="unified-event-head"><strong>${escapeHtml(eventTitle(e) || `Event ${index + 1}`)}</strong><button class="btn danger event-delete" data-action="delete-event" data-event-id="${id}">Delete</button></div>
+    <label class="event-input-label" for="event-${id}-title">Title (optional)</label>
+    <input id="event-${id}-title" class="event-input" data-event-field="title" data-event-id="${id}" value="${escapeHtml(eventTitle(e))}" placeholder="e.g. pleasant walk, work conversation">
+    <label class="event-input-label" for="event-${id}-facts">What happened?</label>
+    <textarea id="event-${id}-facts" class="event-textarea" data-event-field="facts" data-event-id="${id}" placeholder="A short note is enough">${escapeHtml(eventFacts(e))}</textarea>
+    <details class="event-details" data-event-expand="${id}" ${expanded ? 'open' : ''}><summary>More detail (optional)${e.discuss ? ' · therapy' : ''}${e.flag ? ' · review' : ''}</summary>
+      <label class="event-input-label" for="event-${id}-kind">Type (optional)</label>
+      <select id="event-${id}-kind" class="event-input" data-event-field="kind" data-event-id="${id}">
+        <option value="" ${!kind ? 'selected' : ''}>Not labeled</option>
+        ${[['difficult','Difficult'],['positive','Positive'],['ordinary','Everyday'],['mixed','Mixed']].map(([v,t]) => `<option value="${v}" ${kind === v ? 'selected' : ''}>${t}</option>`).join('')}
+      </select>
+      ${eventField(e,'emotions','Feelings','e.g. joy, anger, relief, unsure')}
+      ${eventField(e,'body','Body sensations','e.g. tightness, warmth, energy')}
+      ${eventField(e,'interpretations','Thoughts / interpretations','What went through your mind? Not necessarily fact.')}
+      ${eventField(e,'urges','Urges','What did you want to do?')}
+      ${eventField(e,'signals','Actions / social signals','What you did or communicated')}
+      ${eventField(e,'results','What followed?','Immediate outcome or consequence')}
+      ${eventField(e,'skills','Skills used (optional)','If any; not limited to this week')}
+      <label class="event-checkbox"><input type="checkbox" data-event-discuss="${id}" ${e.discuss ? 'checked' : ''}> Discuss in Therapy</label>
+      <label class="event-checkbox"><input type="checkbox" data-event-flag="${id}" ${e.flag ? 'checked' : ''}> Flag for Weekly Review</label>
+    </details>
+  </div>`;
+}
+
+renderToday = function(day) {
+  const w = appState.currentWeek;
+  if (!day) return '<div class="notice">No daily entry is available.</div>';
+  return `<div class="compact-today">${renderDayNavigator(w,day)}
+    <h1 class="page-title">${escapeHtml(fmtLong(day.date))}</h1>
+    <div class="today-subtitle"><span>Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</span><span id="diary-save-status" role="status" aria-live="polite">Changes save automatically</span></div>
+    ${day.date !== todayStr() ? '<div class="notice history-notice">Earlier date · edits are saved to this date, not today.</div>' : ''}
+    ${meditationSection(day)}
+    ${renderTargetSection('What I noticed internally','Private Behaviors, Emotions & Urges',w.privateTargets,day)}
+    ${renderTargetSection('What I signaled or did','Social Signals & Overt Behaviors',w.socialTargets,day)}
+    <section class="card"><div class="card-header"><div class="section-kicker">Daily observations</div><div class="section-title">Meaningful events</div></div><div class="card-body">
+      ${day.events.length ? day.events.map((e,i) => renderInlineEvent(e,i)).join('') : '<div class="subtle">Add a meaningful, ordinary, difficult, positive or mixed event, or leave blank.</div>'}
+      <button class="btn soft wide" data-action="add-event">+ Add Event</button>
+      ${day.events.length ? '' : `<button class="btn event-none-btn" data-action="toggle-no-events">${day.noEventsNoted ? 'Clear “none noted”' : 'No events to note'}</button>`}
+      ${day.noEventsNoted && !day.events.length ? '<div class="subtle small">No events noted for this day.</div>' : ''}
+    </div></section>
+    ${renderMajorOCThemeContext(w)}
+    ${renderClinicalDailySection(w,day)}
+    ${renderProcessRatingsEntry(w)}
+  </div>`;
+};
+
+const originalPastWeekBanner = pastWeekBanner;
+pastWeekBanner = function() { return originalPastWeekBanner().replace('export this week&apos;s therapist PDF', 'export this week for ChatGPT'); };
+
+const originalRenderHome = renderHome;
+function renderLearningLaunch(week) {
+  const focus = week.learningFocus || 'Not selected — set in Week Setup';
+  return `<section class="card learning-launch"><div class="card-header"><div class="section-kicker">Learning & Practice</div><div class="section-title">Current therapist-directed focus</div></div>
+    <div class="card-body"><div class="learning-focus-text">${escapeHtml(focus)}</div>
+    <div class="subtle small">Study and guided practice happen in ChatGPT. No second activity log is required.</div>
+    <div class="learning-launch-actions"><button class="btn soft" data-action="copy-training-prompt">Copy Skills Training Prompt</button>
+      <button class="btn soft" data-action="copy-rehearsal-prompt">Copy Guided Rehearsal Prompt</button></div>
+    <div class="subtle small" id="copy-prompt-status" aria-live="polite">Paste a copied prompt into a ChatGPT conversation in your DBT/RO-DBT/ACT project.</div>
+  </div></section>`;
+}
+renderHome = function() {
+  const w = appState.currentWeek;
+  let html = originalRenderHome();
+  if (isViewingPastWeek()) {
+    const count = weekDates(w).filter(d => diaryDayHasRecord(w.days[d])).length;
+    html = html.replace(/<div class="list-row"><span>Completed days<\/span><strong>[^<]*<\/strong><\/div>/, `<div class="list-row"><span>Days with entries</span><strong>${count} of 7</strong></div>`);
+  } else {
+    const day = w.days[todayStr()] || getSelectedEntry();
+    html = html.replace(/<div class="list-row"><span>Today&apos;s diary card<\/span><strong[^>]*>[^<]*<\/strong><\/div>/,
+      `<div class="list-row"><span>Today’s observations</span><strong>${diaryDayHasRecord(day) ? 'Recorded' : 'No entry yet'}</strong></div>`);
+    html = html.replace('<div class="home-grid">', `${renderLearningLaunch(w)}<div class="home-grid">`);
+    html = html.replace('Complete or edit today&apos;s diary card.', 'Record or edit today’s observations.');
+  }
+  return html.replaceAll('export the therapist PDF', 'export for ChatGPT').replaceAll('export its therapist PDF', 'export for ChatGPT');
+};
+
+const originalRenderWeekSetup = renderWeekSetup;
+renderWeekSetup = function() {
+  const w = appState.currentWeek;
+  let html = originalRenderWeekSetup();
+  if (isViewingPastWeek()) return html;
+  const history = (appState.profile.learningFocusHistory || []).slice(-5).reverse();
+  const focus = `<section class="card"><div class="card-header"><div class="section-kicker">Learning & Practice</div><div class="section-title">Current therapist assignment</div></div>
+    <div class="card-body"><div class="field"><label for="learning-focus-input">RO-DBT lesson, skill or homework focus</label>
+      <input id="learning-focus-input" value="${escapeHtml(w.learningFocus || '')}" placeholder="e.g. RO-DBT Lesson 17 — ROCKs ON">
+      <div class="subtle small">Saved when you leave the field. Changing it keeps a dated history; study and rehearsal details remain in ChatGPT.</div></div>
+      ${history.length ? `<div class="subtle small">Recent focus history:</div>${history.map(x => `<div class="focus-history"><span>${escapeHtml(x.startedOn || '')}${x.replacedOn ? ` – ${escapeHtml(x.replacedOn)}` : ' – active'}</span><span>${escapeHtml(x.focus)}</span></div>`).join('')}` : ''}
+    </div></section>`;
+  return html.replace('<section class="card"><div class="card-header"><div class="section-kicker">Weekly focus skills</div>',
+    `${focus}<section class="card"><div class="card-header"><div class="section-kicker">Weekly focus skills</div>`);
+};
+
+function changeLearningFocus(value) {
+  const focus = String(value || '').trim().slice(0,240);
+  const w = appState.currentWeek;
+  const before = String(w.learningFocus || '').trim();
+  if (focus === before) return;
+  const today = todayStr();
+  const history = appState.profile.learningFocusHistory || [];
+  const last = history.at(-1);
+  if (last && !last.replacedOn) last.replacedOn = today;
+  if (focus) history.push({focus,startedOn:today,replacedOn:null});
+  appState.profile.learningFocusHistory = history;
+  w.learningFocus = focus;
+  w.learningFocusUpdatedAt = new Date().toISOString();
+  queueSaveWeek();
+  queueSaveProfile();
+  render({preserveScroll:true});
+}
+
+renderReviewEvents = function(w) {
+  const all = weekEvents(w);
+  const shown = appState.reviewEventFilter === 'discuss' ? all.filter(e=>e.discuss) : all;
+  return `<section class="card"><div class="card-header"><div class="section-kicker">Notes / Events</div></div><div class="card-body">
+    <div class="field"><label>Show</label><select id="review-event-filter"><option value="all" ${appState.reviewEventFilter !== 'discuss' ? 'selected':''}>All Events (${all.length})</option><option value="discuss" ${appState.reviewEventFilter === 'discuss' ? 'selected':''}>Discuss in Therapy (${all.filter(e=>e.discuss).length})</option></select></div>
+    ${shown.length ? shown.map(e => `<div class="event-card"><strong>${fmtDay(e.date)} ${fmtDate(e.date,{month:'numeric',day:'numeric'})}${eventTitle(e) ? ` — ${escapeHtml(eventTitle(e))}` : ''}</strong>
+      ${e.kind ? `<div class="subtle small">${escapeHtml(e.kind)}</div>` : ''}
+      ${eventFacts(e) ? `<div class="event-note">${escapeHtml(eventFacts(e))}</div>` : ''}
+      ${[['emotions','Feelings'],['body','Body'],['interpretations','Thoughts'],['urges','Urges'],['signals','Actions / signals'],['results','What followed'],['skills','Skills']].filter(([k])=>e[k]).map(([k,l])=>`<div class="event-note"><strong>${l}:</strong> ${escapeHtml(e[k])}</div>`).join('')}
+      ${e.discuss ? '<div class="flag">Discuss in Therapy</div>' : ''}${e.flag ? '<div class="flag"> · For Weekly Review</div>':''}</div>`).join('') : '<div class="subtle">No events in this view.</div>'}
+  </div></section>`;
+};
+
+const originalRenderReview = renderReview;
+renderReview = function() {
+  const w = appState.currentWeek;
+  let html = originalRenderReview();
+  const count = weekDates(w).filter(d => diaryDayHasRecord(w.days[d])).length;
+  const dailyStatus = `<section class="card"><div class="card-header"><div class="section-kicker">Daily records</div></div><div class="card-body"><div class="btn-row">${weekDates(w).map(d => `<span class="status-pill">${fmtDay(d)} ${diaryDayHasRecord(w.days[d]) ? '✓' : '—'}</span>`).join('')}</div><div class="subtle small">${count} of 7 dates have recorded data. Blank dates do not mean zero or No.</div></div></section>`;
+  html = html.replace(/<section class="card"><div class="card-header"><div class="section-kicker">Completion<\/div>[\s\S]*?<\/div><\/div><\/section>/, dailyStatus);
+  const meditationTable = `<section class="card"><div class="card-header"><div class="section-kicker">Meditation</div></div><div class="card-body"><div class="table-wrap"><table><thead><tr><th>Day</th>${weekDates(w).map(fmtDay).map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody><tr><td>Meditated</td>${weekDates(w).map(d=>{const v=w.days[d].meditationDone;return `<td>${v===true?'Yes':v===false?'No':'—'}</td>`;}).join('')}</tr><tr><td>Minutes</td>${weekDates(w).map(d=>`<td>${w.days[d].meditationDone===true?(w.days[d].meditationMinutes||'—'):'—'}</td>`).join('')}</tr></tbody></table></div></div></section>`;
+  const position = html.indexOf('<section class="card"><div class="card-header"><div class="section-kicker">Private behaviors');
+  if (position !== -1) html = html.slice(0,position) + meditationTable + html.slice(position);
+  else html += meditationTable;
+  const focus = `<section class="card"><div class="card-header"><div class="section-kicker">Learning focus</div></div><div class="card-body">${escapeHtml(w.learningFocus || 'Not set for this therapy week')}</div></section>`;
+  html = html.replace('<section class="card"><div class="card-header"><div class="section-kicker">Week context</div>', `${focus}<section class="card"><div class="card-header"><div class="section-kicker">Week context</div>`);
+  return html.replace('data-action="print-report"','data-action="export-week-chatgpt"')
+    .replace('Export Therapist PDF','Export for ChatGPT');
+};
+
+const originalRenderArchiveModal = renderArchiveModal;
+renderArchiveModal = function(week) {
+  return originalRenderArchiveModal(week).replace('data-action="export-week-report"', 'data-action="export-week-chatgpt"').replace('Export Therapist PDF', 'Export for ChatGPT');
+};
+
+const WEEKLY_CHATGPT_PROMPT = `Create a therapist-review PDF from the attached RO Diary therapy-week export. Use the included structured data as the app record, and retrieve the relevant dated entries from the Personal Growth Continuity Log and RO Journal Continuity Log in my DBT/RO-DBT/ACT project's Library. Respect the exact therapy-week start and end dates in this file. Include every configured RO target with all seven daily ratings (including 0 and No); do not turn missing answers into zeros or infer absence from empty days. Include meditation answers and recorded minutes, all recorded meaningful events and their optional details, review/therapy flags, and applicable weekly setup and review information. Include documented Skills Training, rehearsals and real-world practice from the Personal Growth Continuity Log, distinguishing learning from actual practice. For each closed RO Journal entry in the reporting period, include only its final identified edge/working question; if none was identified, give a factual summary of one or two sentences. Do not include saved/favorite Question Finder questions or automatically reproduce private journal narratives. Identify absent or unfinished continuity records rather than inventing activity. Do not add diagnoses or unsupported interpretations. Provide a readable summary followed by complete relevant daily details. Let me review the PDF before sharing it with my therapist. This JSON file is a plaintext, sensitive export, not an encrypted backup.`;
+function exportWeekData(week, profile) {
+  const data = {
+    therapyWeek: {startDate:week.startDate,endDate:week.endDate,id:week.id,setupStatus:week.setupStatus||null},
+    learningFocus:week.learningFocus||'', learningFocusUpdatedAt:week.learningFocusUpdatedAt||null,
+    learningFocusHistory:(profile.learningFocusHistory||[]).filter(x=>x.startedOn<=week.endDate&&(!x.replacedOn||x.replacedOn>=week.startDate)),
+    privateTargets:structuredClone(week.privateTargets),socialTargets:structuredClone(week.socialTargets),
+    focusSkills:structuredClone(week.focusSkills||[]),
+    focusSkillLabels:(week.focusSkills||[]).map(id=>({id,name:skillName(id)})),
+    historicalSkillsCatalog:SKILLS.map(x=>({id:x.id,name:x.name})),
+    ratingScaleAnchors:[...SCALE_ANCHORS],
+    homework:week.homework||'',valuedGoal:week.valuedGoal||'',
+    majorOCThemeEnabled:!!week.majorOCThemeEnabled,majorOCTheme:week.majorOCTheme||'',
+    therapyProcessEnabled:!!week.therapyProcessEnabled,therapyProcess:structuredClone(week.therapyProcess||blankTherapyProcess()),
+    riskTrackingEnabled:!!week.riskTrackingEnabled,days:{},
+    // Self-Enquiry Question Finder content is intentionally NOT part of this export.
+  };
+  weekDates(week).forEach(date=>{
+    const d=week.days[date];
+    data.days[date]={
+      ratings:structuredClone(d.ratings||{}), meditationDone:d.meditationDone===true?true:d.meditationDone===false?false:null,
+      meditationMinutes:Number.isInteger(d.meditationMinutes)?d.meditationMinutes:null,
+      noEventsNoted:d.noEventsNoted===true,
+      events:structuredClone(d.events||[]),
+      historicalDailySkills:structuredClone(d.skills||[]),
+      clinical:structuredClone(d.clinical||{}),
+      legacyCompleted:!!d.completed,recordModifiedAt:d.modifiedAt||null,
+      // Empty answers are not automatically converted to 0 or false.
+    };
+  });
+  return {format:'ro-diary-chatgpt-weekly-export',version:1,appVersion:'0.6.0-beta',exportedAt:new Date().toISOString(),
+    instructions:WEEKLY_CHATGPT_PROMPT, data};
+}
+async function downloadWeekExport(w) {
+  if (!w) throw new Error('Therapy week unavailable');
+  await appState.saveChain;
+  if (appState.saveError) throw new Error(`Latest diary save failed: ${appState.saveError}`);
+  const obj=exportWeekData(w,appState.profile);
+  const json=JSON.stringify(obj,null,2);
+  const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  try {
+    const a=document.createElement('a');a.href=url;a.download=`RO-Diary-Therapy-Week-${w.startDate}-to-${w.endDate}.json`;
+    document.body.appendChild(a);a.click();a.remove();
+  } finally {setTimeout(()=>URL.revokeObjectURL(url),2500);}
+}
+function trainingPrompt(type) {
+  const focus=appState.currentWeek.learningFocus || 'my current therapist-directed RO-DBT assignment (ask me for the focus)';
+  const lead=type==='rehearsal'?'Please guide an actual brief skills rehearsal.':'Please continue source-grounded Skills Training.';
+  return `${lead} Current therapist-directed learning focus: ${focus}. Use the current Personal Growth Operating Protocol, relevant prior continuity records and the actual RO-DBT skills manual. Distinguish teaching, questions, rehearsal, real-life practice, and any incomplete homework. Ask one focused question at a time during guided practice. Do not treat hypothetical responses or studying as real-world skill use. Only update the Personal Growth Continuity Log when I explicitly say Close Session; verify the save.`;
+}
+
+const originalHandleAction = handleAction;
+handleAction = async function(action, button) {
+  if (action === 'add-event') {
+    const d=getSelectedEntry(),e=newEmptyEvent();
+    d.events.push(e);d.noEventsNoted=false;d.modifiedAt=new Date().toISOString();
+    if (!appState.expandedEventIds) appState.expandedEventIds=new Set();
+    appState.expandedEventIds.add(e.id);
+    queueSaveWeek();render({preserveScroll:true});return;
+  }
+  if (action === 'toggle-no-events') {
+    const d=getSelectedEntry();if(d.events.length)return;
+    d.noEventsNoted=!d.noEventsNoted;d.modifiedAt=new Date().toISOString();queueSaveWeek();render({preserveScroll:true});return;
+  }
+  if (action === 'delete-event') {
+    const d=getSelectedEntry(),id=button.dataset.eventId;
+    if (!confirm('Delete this event?')) return;
+    d.events=d.events.filter(e=>e.id!==id);appState.expandedEventIds?.delete(id);
+    d.modifiedAt=new Date().toISOString();queueSaveWeek();render({preserveScroll:true});return;
+  }
+  if (action === 'export-week-chatgpt') {
+    try {const w=button.dataset.weekId?await loadWeekForAction(button.dataset.weekId):appState.currentWeek;await downloadWeekExport(w);}
+    catch(e){alert(`Weekly export failed: ${e.message||e}`);}return;
+  }
+  if (action === 'copy-training-prompt'||action==='copy-rehearsal-prompt') {
+    const p=trainingPrompt(action==='copy-rehearsal-prompt'?'rehearsal':'training');
+    try {await navigator.clipboard.writeText(p);const s=$('#copy-prompt-status');if(s)s.textContent='Prompt copied. Paste it into ChatGPT.';}
+    catch(e){appState.modal={type:'copy-prompt',text:p};render({preserveScroll:true});}
+    return;
+  }
+  return originalHandleAction(action,button);
+};
+
+const originalRenderModal = renderModal;
+renderModal = function() {
+  if (appState.modal?.type==='copy-prompt') return `<div class="modal-backdrop"><div class="modal"><h2>Copy Prompt</h2><textarea readonly class="event-textarea" id="prompt-fallback">${escapeHtml(appState.modal.text||'')}</textarea><button class="btn primary wide" data-action="close-modal">Close</button></div></div>`;
+  return originalRenderModal();
+};
+
+const originalBindApp = bindApp;
+bindApp = function() {
+  originalBindApp();
+  $$('[data-meditation]').forEach(b=>b.addEventListener('click',()=>{
+    const d=getSelectedEntry();d.meditationDone=b.dataset.meditation==='yes';
+    if(!d.meditationDone)d.meditationMinutes=null;
+    d.modifiedAt=new Date().toISOString();queueSaveWeek();render({preserveScroll:true});
+  }));
+  $('[data-meditation-minutes]')?.addEventListener('change',e=>{
+    const d=getSelectedEntry(),raw=e.target.value.trim();
+    if(raw && (!/^\d+$/.test(raw)||Number(raw)<1||Number(raw)>1440)){
+      alert('Enter 1–1440 minutes, or leave the duration blank.');e.target.value=d.meditationMinutes||'';return;
+    }
+    d.meditationMinutes=raw?Number(raw):null;
+    d.modifiedAt=new Date().toISOString();queueSaveWeek();
+  });
+  $('#learning-focus-input')?.addEventListener('change',e=>changeLearningFocus(e.target.value));
+  $$('[data-event-expand]').forEach(el=>el.addEventListener('toggle',()=>{
+    if(!appState.expandedEventIds)appState.expandedEventIds=new Set();
+    if(el.open)appState.expandedEventIds.add(el.dataset.eventExpand);
+    else appState.expandedEventIds.delete(el.dataset.eventExpand);
+  }));
+  $$('[data-event-field]').forEach(el=>{
+    const saveField=()=>{
+      const d=getSelectedEntry(),e=d.events.find(x=>x.id===el.dataset.eventId);if(!e)return;
+      const key=el.dataset.eventField, val=el.value;
+      if(e[key]===val)return;
+      e[key]=val;e.modifiedAt=new Date().toISOString();d.modifiedAt=e.modifiedAt;
+      queueSaveWeek();
+      if(key==='title'){
+        const title=el.closest('.unified-event')?.querySelector('.unified-event-head strong');
+        if(title)title.textContent=val||'Event';
+      }
+    };
+    el.addEventListener('input',saveField);el.addEventListener('change',saveField);
+  });
+  $$('[data-event-discuss],[data-event-flag]').forEach(el=>el.addEventListener('change',()=>{
+    const d=getSelectedEntry(),id=el.dataset.eventDiscuss||el.dataset.eventFlag;
+    const e=d.events.find(x=>x.id===id);if(!e)return;
+    e[el.hasAttribute('data-event-discuss')?'discuss':'flag']=el.checked;
+    e.modifiedAt=new Date().toISOString();d.modifiedAt=e.modifiedAt;queueSaveWeek();
+  }));
+};
+
 
 init().catch(e=>{document.getElementById('app').innerHTML=`<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">${escapeHtml(e.message)}</div></div></div>`;});
 

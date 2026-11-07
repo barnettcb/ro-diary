@@ -291,3 +291,41 @@ html, body, #app {
 .archive-week-label{display:flex;flex-direction:column;gap:3px;min-width:0}
 .archive-week-label strong{font-size:1rem;line-height:1.25}
 .archive-week-label small{display:block;line-height:1.25}
+
+/* v0.6.0: concise daily observation and embedded event editing */
+.compact-today .card { margin: 9px 0; }
+.compact-today .card-header { padding: 10px 13px 8px; }
+.compact-today .card-body { padding: 9px 13px; }
+.compact-today .target-row { padding: 7px 0; }
+.compact-today .target-head { margin-bottom: 5px; }
+.compact-today .target-name { font-size: 14px; }
+.compact-today .info-btn { width:24px; height:24px; font-size:12px; }
+.compact-today .scale { gap:5px; }
+.compact-today .score-btn { min-height:35px; border-radius:8px; }
+.compact-today .section-title { font-size:16px; }
+.today-subtitle { display:flex; justify-content:space-between; align-items:center; gap:7px; font-size:12px; color:var(--muted); margin:5px 0; flex-wrap:wrap; }
+#diary-save-status { color:var(--success); }
+#diary-save-status.save-failed { color:var(--danger); font-weight:750; }
+.compact-section-heading { display:flex; gap:10px; align-items:center; justify-content:space-between; font-size:16px; font-weight:750; margin-bottom:7px; }
+.meditation-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.meditation-minutes { display:flex; gap:9px; align-items:center; justify-content:space-between; margin-top:9px; font-size:13px; }
+.meditation-minutes input { width:95px; padding:6px 8px; border:1px solid var(--line); border-radius:8px; }
+.unified-event { padding:10px; }
+.unified-event-head { display:flex; justify-content:space-between; align-items:center; gap:9px; }
+.unified-event-head strong { min-width:0; overflow-wrap:anywhere; }
+.unified-event .event-delete { min-height:30px; padding:4px 9px; flex-shrink:0; }
+.event-input-label { display:block; color:var(--text); font-size:13px; font-weight:650; margin:9px 0 4px; }
+.event-input, .event-textarea { display:block; width:100%; border:1px solid var(--line); background:white; color:var(--text); border-radius:9px; padding:8px; font-size:14px; }
+.event-textarea { min-height:60px; resize:vertical; }
+.event-details { border-top:1px solid var(--line); margin-top:11px; padding-top:8px; }
+.event-details summary { cursor:pointer; color:var(--accent); font-size:13px; font-weight:750; }
+.event-checkbox { display:flex; align-items:center; gap:8px; margin:11px 0; font-size:13px; }
+.event-checkbox input { width:18px; height:18px; }
+.event-none-btn { margin-top:6px; width:100%; min-height:34px; font-size:13px; }
+.learning-launch { margin:14px 0; }
+.learning-focus-text { font-weight:750; font-size:15px; margin-bottom:7px; }
+.learning-launch-actions { display:grid; gap:8px; grid-template-columns:repeat(2,minmax(0,1fr)); margin:12px 0; }
+.learning-launch-actions .btn { min-height:42px; font-size:13px; }
+.focus-history { display:flex; flex-direction:column; gap:2px; padding:6px 0; font-size:12px; border-bottom:1px solid var(--line); }
+.focus-history span:first-child { color:var(--muted); }
+@media(max-width:390px){ .learning-launch-actions { grid-template-columns:1fr; } }
