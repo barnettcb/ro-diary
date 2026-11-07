@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.6.1-beta';
+const APP_VERSION = '0.6.2-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -1554,7 +1554,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.6.1').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.6.2').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 
@@ -1779,7 +1779,7 @@ renderArchiveModal = function(week) {
   return originalRenderArchiveModal(week).replace('data-action="export-week-report"', 'data-action="export-week-chatgpt"').replace('Export Therapist PDF', 'Export for ChatGPT');
 };
 
-const WEEKLY_CHATGPT_PROMPT = `Create a therapist-review PDF from the attached RO Diary therapy-week export. Use the included structured data as the app record, and retrieve the relevant dated entries from the Personal Growth Continuity Log and RO Journal Continuity Log in my DBT/RO-DBT/ACT project's Library. Respect the exact therapy-week start and end dates in this file. Include every configured RO target with all seven daily ratings (including 0 and No); do not turn missing answers into zeros or infer absence from empty days. Include meditation answers and recorded minutes, all recorded meaningful events and their optional details and therapy discussion flags, plus applicable weekly setup and review information. Treat legacy weekly skills/homework and any historical event review flag as historical-only data, not as current assignments, filters or evidence of skill practice. Include documented Skills Training, rehearsals and real-world practice from the Personal Growth Continuity Log, distinguishing learning from actual practice. For each closed RO Journal entry in the reporting period, include only its final identified edge/working question; if none was identified, give a factual summary of one or two sentences. Do not include saved/favorite/discovered Question Finder questions, legacy weekly self-enquiry focus text, or automatically reproduce private journal narratives. Identify absent or unfinished continuity records rather than inventing activity. Do not add diagnoses or unsupported interpretations. Provide a readable summary followed by complete relevant daily details. Let me review the PDF before sharing it with my therapist. This JSON file is a plaintext, sensitive export, not an encrypted backup.`;
+const WEEKLY_CHATGPT_PROMPT = `Prepare a polished, factual RO-DBT weekly therapist PDF for the exact therapy-week dates in this RO Diary export. Use the structured export as the authoritative record of app-entered information. For the report's self-enquiry section, retrieve only relevant CLOSED RO Journal entries dated within this therapy week from the project's RO Journal Continuity Log; this retrieval is internal and its source or workflow must NOT be mentioned in the therapist-facing PDF. Use the concise approved format: (1) current skills training focus, (2) complete daily RO target ratings, (3) meditation and meaningful events by day, including any expanded optional event details and Discuss in Therapy flags, and (4) self-enquiry questions. Label the current learningFocus exactly 'Current Skills Training Focus', NEVER 'Therapy Focus' or the overall focus of therapy. Treat it as the selected lesson or skill being studied, NOT proof of completion or practice. Present EVERY configured private and social RO target in a readable target-by-day table with ALL SEVEN therapy-week dates. Include numeric 0-5 and Yes/No values exactly as recorded; do not turn blanks, nulls, absent responses, or unfinished days into zero, No, or evidence that something did not happen. Supply a clear rating key and distinguish unanswered from 0. Include meditation answers and optional minutes for each day. Include all meaningful events entered during the period, their full recorded optional details and flags; distinguish 'no events noted' when explicitly selected from an unassessed or empty day. If optional RO clinical or weekly context fields were enabled and actually recorded, include their relevant values without inventing answers; treat legacy skills, homework, self-enquiry focus, event flags, and completion fields as historical only, not active requirements or evidence of practice. For EACH closed RO Journal entry within the therapy-week dates, include ONLY its final identified edge/working question as recorded. If no edge question was established, use a factual one- or two-sentence summary of the actual enquiry. Do not include saved/favorite/discovered Question Finder questions, full private journal narratives, or other journal details by default. Do NOT include a 'Weekly Snapshot', executive overview, or repeated summary of the daily tables. Do NOT add a separate Skills Training or Rehearsal section, or include descriptions of ChatGPT work. Do NOT mention ChatGPT, AI, continuity logs, Library, record IDs, session closure, or other internal tracking or report-preparation methods ANYWHERE in the therapist-facing PDF. Do not insert unsupported clinical conclusions, diagnoses, or inferred progress. Use clear professional formatting, preferably one page when the data permits, but do not omit entered details merely to fit a page. Identify partial/incomplete therapy weeks when applicable; provide a draft for my review before I send it to my therapist. This JSON export contains sensitive plaintext information and is not an encrypted diary backup.`;
 function exportWeekData(week, profile) {
   const data = {
     therapyWeek: {startDate:week.startDate,endDate:week.endDate,id:week.id,setupStatus:week.setupStatus||null},
@@ -1807,7 +1807,7 @@ function exportWeekData(week, profile) {
       // Empty answers are not automatically converted to 0 or false.
     };
   });
-  return {format:'ro-diary-chatgpt-weekly-export',version:1,appVersion:'0.6.1-beta',exportedAt:new Date().toISOString(),
+  return {format:'ro-diary-chatgpt-weekly-export',version:1,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),
     instructions:WEEKLY_CHATGPT_PROMPT, data};
 }
 async function downloadWeekExport(w) {
