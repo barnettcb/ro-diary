@@ -1,20 +1,22 @@
-# RO-DBT Diary Beta 0.6.0 — Unified Daily Check-In
+# RO Diary 0.6.1 Beta — Weekly Focus and Event Cleanup
 
-This is a **local-first, encrypted** RO-DBT diary PWA. It is an incremental update to the previously released **0.5.14** app, not a new database or a replacement for existing local records.
+**Base:** RO Diary 0.6.0-beta, verified against the current `barnettcb/ro-diary` GitHub `main` source on November 6, 2026. This is a narrowly scoped interface/workflow update. It does **not** reset the encrypted vault or change the IndexedDB database name, database version, encryption, backup format, or therapy-week date conventions.
 
 ## What changed
 
-- **Today:** All configured private and social targets stay visible with tighter spacing. Meditation is a single Yes/No with optional minutes; missing remains unanswered. No separate daily skills or self-enquiry fields, and no required Save/Complete Day step.
-- **Events:** Growth Practice-style inline editing: title and what happened, plus optional expandable type, feelings, body sensations, thoughts, urges, social signals, results, skills, and therapy/review flags. Existing simple context/note events display in the new editor without deleting their legacy fields.
-- **Home:** A compact Learning & Practice section shows the active therapist-directed learning focus, plus two copyable ChatGPT prompt shortcuts. No manual learning log.
-- **Week Setup:** Enter or change the therapist-directed learning focus. A dated history is retained in the encrypted profile and the focus carries forward when copying the previous week. Existing RO targets, yes/no and 0–5 types, weekly setup, and therapy-week dates remain as before.
-- **Weekly Review:** Preserve the existing review content, add meditation results and complete inline event detail, and replace the visible PDF action with **Export for ChatGPT**. The single JSON download contains the complete seven-day reportable app data, including instructions for retrieving the two relevant ChatGPT Library continuity logs and producing a therapist PDF.
-- **Privacy:** Saved, favorite, and personal Self-Enquiry Question Finder questions are not exported. The weekly JSON is **plaintext** and should be handled as sensitive health information; the original encrypted backup remains separate.
+- **Meaningful Events:** Removed the active **Flag for Weekly Review** checkbox and its corresponding review badge. **Discuss in Therapy** remains available. All events continue to appear in the weekly ChatGPT export regardless of flags. Older event `flag` values are retained in stored event objects, including the export, as historical information.
+- **Weekly Setup:** The single **Current therapist assignment** textarea now holds the active RO-DBT lesson/skill and relevant homework. The separate weekly focus skills, skills-class homework, and weekly Self-Enquiry focus inputs are no longer displayed. The current assignment and dated history, targets, optional valued goal, and clinical settings remain.
+- **Initial Setup and Setup Guide:** Aligned with the same single-assignment workflow. There is no longer a default list of skills or a mandatory Self-Enquiry focus during onboarding.
+- **Self-Enquiry:** Question Finder, saved/favorite/discovered/personal questions, and cue-based questions remain. The old weekly focus panel and **Set as Weekly Focus** action are removed. **Use This Question** offers **Copy Question** and **Save for This Week** instead. Questions are not automatically treated as a therapist assignment.
+- **Weekly Review and ChatGPT Export:** Displays current learning focus as before, but labels pre-existing obsolete skills/homework/SE entries as historical when present. The export labels old weekly skill selections and homework as legacy data, not current training. Its therapist instructions explicitly exclude saved/favorite/discovered Question Finder questions and the retired SE focus text.
+- **New weeks:** Copy the current therapist assignment, RO targets, target rating types, valued goal, and relevant clinical settings; do **not** automatically copy the retired focus-skills/homework/SE focus fields. Prior weeks and their values remain unchanged.
 
-## Protected functionality
+## What did NOT change
 
-Question Finder, saved/favorite/personal questions, Guided Practices and imported audio, PIN unlock, local encrypted storage, encrypted backup/restore, archive/history, existing weekly setup and therapy-process settings remain. The old PDF implementation file is retained in source history as rollback but its main workflow is replaced.
+- PIN and encrypted storage; encrypted backup/restore format; therapy-week boundaries and previous-week navigation; RO targets and ratings (including `0`, `No`, and unanswered); meditation and inline Growth Practice-style events; Home training/rehearsal prompts; Guided Practices and audio import/playback; saved Question Finder lists and the library; the weekly Export for ChatGPT file workflow.
+- Historical values in existing weeks are **not deleted or rewritten**. A user may still view them in old weekly reviews when present, and encrypted backups preserve them.
+- **No automatic ChatGPT synchronization**: weekly export is a JSON file the user intentionally uploads to ChatGPT. The weekly JSON is *plaintext sensitive diary data*, not an encrypted backup.
 
-## Important
+## Important limitation
 
-GitHub deployment has not yet been performed through this ChatGPT connection (GitHub write operations returned 403). The new implementation has passed JavaScript syntax checks and data-model regression tests, but **has not been verified on the actual iPhone**. Read `UPGRADE-AND-TEST.md` before replacing any published files.
+The application package passes JavaScript parsing and offline data-model regression checks. An automated Chromium acceptance test could not navigate to the local test server (`ERR_BLOCKED_BY_ADMINISTRATOR`), so full browser/UI and on-device encrypted-vault verification remain outstanding. GitHub source was read/verified; GitHub write operations previously returned **403**, so this release **has not been deployed**. Follow `UPGRADE-AND-TEST.md` and preserve the existing app until acceptance passes.

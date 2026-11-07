@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 
-const APP_VERSION = '0.6.0-beta';
+const APP_VERSION = '0.6.1-beta';
 const DB_NAME = 'ro-diary-db-v2';
 const LEGACY_DB_NAMES = ['ro-diary-db'];
 const DB_VERSION = 2;
@@ -535,9 +535,9 @@ function buildNewWeek(startDate, previous=null, options={}) {
     id,startDate:toDateOnly(start),endDate:toDateOnly(end),
     privateTargets:blank?[]:structuredClone(previous?.privateTargets || DEFAULT_PRIVATE_TARGETS),
     socialTargets:blank?[]:structuredClone(previous?.socialTargets || DEFAULT_SOCIAL_TARGETS),
-    focusSkills:blank?[]:[...(previous?.focusSkills || DEFAULT_FOCUS_SKILLS)],
-    weeklySEFocus:blank?'':(previous?.weeklySEFocus || DEFAULT_SE_FOCUS),
-    homework:blank?'':(previous?.homework || DEFAULT_HOMEWORK),
+    focusSkills:[], // Legacy skills selections remain intact in existing weeks only.
+    weeklySEFocus:'', // Retired field is no longer copied to new weeks.
+    homework:'', // Replaced by the therapist learningFocus field.
     valuedGoal:blank?'':(previous?.valuedGoal || ''),
     majorOCTheme:'', majorOCThemeEnabled:blank?false:!!previous?.majorOCThemeEnabled,
     therapyProcessEnabled:blank?false:!!previous?.therapyProcessEnabled, therapyProcess:blankTherapyProcess(),
@@ -849,7 +849,7 @@ function renderInitialSetup(){
     const preview=selected!==null?`<div class="notice success-notice">Your current therapy week will be <strong>${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</strong>.</div>`:'';
     body=`<h1 class="page-title">Set Up Your Diary</h1><div class="subtle">A few choices will create your first local diary card. Nothing here is sent anywhere.</div>
       <section class="card"><div class="card-header"><div class="section-kicker">Basics</div><div class="section-title">Your therapy week</div></div><div class="card-body">
-        <div class="field"><label>Name or initials for therapist PDFs (optional)</label><input id="initial-pdf-name" value="${escapeHtml(p.pdfName||'')}" placeholder="Name or initials"></div>
+        <div class="field"><label>Name or initials (optional)</label><input id="initial-pdf-name" value="${escapeHtml(p.pdfName||'')}" placeholder="Name or initials"></div>
         <div class="field"><label>What day does your therapy week start?</label><select id="initial-week-start"><option value="">Choose a day</option>${initialWeekDayOptions(selected)}</select><div class="subtle small">Choose the day your weekly diary card begins. You can change this later for future weeks.</div></div>${preview}
         <div class="notice"><strong>Already use RO-DBT Diary?</strong> If you have an encrypted backup from another installation, you can restore it instead of building a new first week.</div><button class="btn wide" data-action="restore">Restore Existing Backup</button>
       </div></section>`;
@@ -862,12 +862,10 @@ function renderInitialSetup(){
       <section class="card"><div class="card-header"><div class="section-kicker">Optional examples</div><div class="section-title">Tap any that fit</div></div><div class="card-body">${renderInitialSuggestions(INITIAL_PRIVATE_SUGGESTIONS,'private')}<div class="subtle small" style="margin-top:10px">These examples are optional. Leave them unselected if they are not part of your treatment focus.</div></div></section>
       <section class="card"><div class="card-header"><div class="section-kicker">Your private targets</div></div><div class="card-body">${renderInitialTargetList(w.privateTargets,'private')}<button class="btn soft wide" data-action="add-target" data-kind="private">+ Add My Own Private Target</button></div></section>`;
   } else if(step===4){
-    body=`<h1 class="page-title">Weekly Focus</h1><div class="subtle">Set only what applies to this week. All of these can be updated later.</div>
-      <section class="card"><div class="card-header"><div class="section-kicker">Focus skills</div></div><div class="card-body"><div class="checkbox-list">${SKILLS.filter(s=>s.id!=='fixed-fatalistic').map(s=>`<label class="check-row"><input type="checkbox" data-focus-skill="${s.id}" ${w.focusSkills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><div class="subtle small" style="margin-top:8px">Choose up to five, or leave this blank until you know what you are practicing.</div></div></section>
-      <section class="card"><div class="card-body"><div class="field"><label>Weekly self-enquiry focus</label><textarea data-week-field="weeklySEFocus" placeholder="Leave blank if none is assigned yet">${escapeHtml(w.weeklySEFocus||'')}</textarea></div><div class="field"><label>Skills-class homework</label><input data-week-field="homework" value="${escapeHtml(w.homework||'')}" placeholder="Leave blank if none"></div><div class="field"><label>Valued goal (optional)</label><input data-week-field="valuedGoal" value="${escapeHtml(w.valuedGoal||'')}"></div></div></section>`;
+    body=`<h1 class="page-title">Therapist Assignment</h1><div class="subtle">Enter the current RO-DBT lesson, skill, or homework focus. You can update it later in Week Setup.</div>
+      <section class="card"><div class="card-body"><div class="field"><label for="learning-focus-input">Current therapist assignment (optional)</label><textarea id="learning-focus-input" rows="3" placeholder="e.g. RO-DBT Lesson 17 — ROCKs ON">${escapeHtml(w.learningFocus||'')}</textarea><div class="subtle small">One field for lesson and homework. Substantive learning and self-enquiry work are recorded in ChatGPT, not on the daily card.</div></div><div class="field"><label>Valued goal (optional)</label><input data-week-field="valuedGoal" value="${escapeHtml(w.valuedGoal||'')}"></div></div></section>`;
   } else {
     const targetNames=arr=>arr.length?arr.map(t=>escapeHtml(t.label)).join(', '):'None selected yet';
-    const skillNames=w.focusSkills.length?w.focusSkills.map(skillName).map(escapeHtml).join(', '):'None selected';
     const weekStartName=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][p.therapyWeekStart]||'Not set';
     const noTargets=!w.socialTargets.length&&!w.privateTargets.length?'<div class="notice">No targets are selected yet. You can still start the week and add targets later in Week Setup.</div>':'';
     body=`<h1 class="page-title">Review & Start</h1><div class="subtle">Check your first weekly setup. You can change these items later without recreating the app.</div>
@@ -877,7 +875,7 @@ function renderInitialSetup(){
         <label class="check-row"><input type="checkbox" data-week-toggle="riskTrackingEnabled" ${w.riskTrackingEnabled?'checked':''}><span>Risk / Medication / Substance Fields</span></label>
       </div>${w.majorOCThemeEnabled?`<div class="field"><label>Major OC Theme this week</label><input data-week-field="majorOCTheme" value="${escapeHtml(w.majorOCTheme||'')}"></div>`:''}<div class="subtle small" style="margin-top:10px">These are off by default. Turn them on only when they are relevant to your treatment.</div></div></section>
       <section class="card"><div class="card-header"><div class="section-kicker">First week</div><div class="section-title">${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div></div><div class="card-body initial-review">
-        <div><strong>PDF name:</strong> ${escapeHtml(p.pdfName||'Not set')}</div><div><strong>Therapy week starts:</strong> ${weekStartName}</div><div><strong>Social targets:</strong> ${targetNames(w.socialTargets)}</div><div><strong>Private targets:</strong> ${targetNames(w.privateTargets)}</div><div><strong>Focus skills:</strong> ${skillNames}</div><div><strong>Self-enquiry focus:</strong> ${escapeHtml(w.weeklySEFocus||'None')}</div><div><strong>Homework:</strong> ${escapeHtml(w.homework||'None')}</div><div><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'None')}</div>
+        <div><strong>Name:</strong> ${escapeHtml(p.pdfName||'Not set')}</div><div><strong>Therapy week starts:</strong> ${weekStartName}</div><div><strong>Social targets:</strong> ${targetNames(w.socialTargets)}</div><div><strong>Private targets:</strong> ${targetNames(w.privateTargets)}</div><div><strong>Therapist assignment:</strong> ${escapeHtml(w.learningFocus||'Not set')}</div><div><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'None')}</div>
       </div></section>${noTargets}<section class="card"><div class="card-body"><button class="btn primary wide" data-action="finish-initial-setup">Start My First Week</button></div></section>`;
   }
   return `${progress}${body}<div class="initial-setup-actions">${back}${next}</div>`;
@@ -950,10 +948,10 @@ function renderHome(){
     </div></section>
     <div class="home-grid">
       <button class="home-tile" data-nav="today"><strong>Today</strong><span>Complete or edit today&apos;s diary card.</span></button>
-      <button class="home-tile" data-nav="se"><strong>Self-Enquiry</strong><span>Weekly focus, Question Finder, and saved questions.</span></button>
+      <button class="home-tile" data-nav="se"><strong>Self-Enquiry</strong><span>Question Finder and saved questions.</span></button>
       <button class="home-tile" data-page="guided-practices"><strong>Guided Practices</strong><span>Open your personal Loving Kindness meditation.</span></button>
       <button class="home-tile" data-nav="review"><strong>Review</strong><span>Review the week and export the therapist PDF.</span></button>
-      <button class="home-tile" data-page="week-setup"><strong>Week Setup</strong><span>Update targets, focus skills, and weekly fields.</span></button>
+      <button class="home-tile" data-page="week-setup"><strong>Week Setup</strong><span>Update targets and your therapist assignment.</span></button>
       <button class="home-tile" data-nav="more"><strong>More</strong><span>Backup, archive, skills reference, and settings.</span></button>
     </div>`;
 }
@@ -1045,7 +1043,6 @@ function renderSE(){
     ? `<button class="btn primary" data-action="use-se-question">Use This Question</button><button class="btn" data-action="reject-question">Not Useful</button>`
     : `<button class="btn primary" data-action="use-se-question">Use This Question</button><button class="btn soft" data-action="go-one-step-further">Go One Step Further</button><button class="btn" data-action="another-starter">Another Starter</button><button class="btn" data-action="reject-question">Not Useful</button>`;
   return `<h1 class="page-title">Self-Enquiry</h1>
-  <section class="card"><div class="card-header"><div class="section-kicker">Weekly focus</div></div><div class="card-body">${escapeHtml(w.weeklySEFocus||'No weekly focus question.')}</div></section>
   <section class="card"><div class="card-header"><div class="section-kicker">Question Finder</div><div class="section-title">Find one useful question, then practice it</div></div><div class="card-body">
     <div class="field"><label>What are you noticing?</label><select id="se-cue">${SE_CUES.map(c=>`<option value="${c.id}" ${appState.seCue===c.id?'selected':''}>${escapeHtml(c.label)}</option>`).join('')}</select><div class="subtle small">Choose the closest fit. More than one can apply. These are general RO-DBT cues, not personal targets.</div></div>
     <div class="prompt-category">${escapeHtml(cueLabel(appState.seCue))}</div>
@@ -1077,9 +1074,9 @@ function renderReview(){const w=appState.currentWeek; const dates=weekDates(w); 
  <section class="card"><div class="card-header"><div class="section-kicker">Social signals & overt behaviors</div></div><div class="card-body">${renderRatingsTable(w.socialTargets,w)}</div></section>
  ${renderProcessRatingsReview(w)}
  ${renderReviewEvents(w)}
- <section class="card"><div class="card-header"><div class="section-kicker">Skills used</div></div><div class="card-body">${Object.keys(skillMap).length?Object.entries(skillMap).map(([s,ds])=>`<div class="list-row"><strong>${escapeHtml(skillName(s))}</strong><span class="small">${ds.join(', ')}</span></div>`).join(''):'<div class="subtle">No skills recorded.</div>'}</div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">Self-Enquiry</div></div><div class="card-body"><div><strong>Weekly focus:</strong><br>${escapeHtml(w.weeklySEFocus||'—')}</div><div style="margin-top:10px"><strong>Saved questions:</strong> ${w.savedSEPrompts.length}</div><div style="margin-top:6px"><strong>Questions discovered:</strong> ${(w.newSEQuestions||[]).length}</div></div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">Week context</div></div><div class="card-body"><div><strong>Homework:</strong> ${escapeHtml(w.homework||'—')}</div><div style="margin-top:8px"><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${w.majorOCThemeEnabled?`<div style="margin-top:8px"><strong>Major OC Theme:</strong> ${escapeHtml(w.majorOCTheme||'—')}</div>`:''}</div></section>
+ ${Object.keys(skillMap).length?`<section class="card"><div class="card-header"><div class="section-kicker">Historical daily skills entries</div></div><div class="card-body">${Object.entries(skillMap).map(([s,ds])=>`<div class="list-row"><strong>${escapeHtml(skillName(s))}</strong><span class="small">${ds.join(', ')}</span></div>`).join('')}<div class="subtle small">These are older diary records, not the current ChatGPT learning log.</div></div></section>`:''}
+ ${w.weeklySEFocus?`<section class="card"><div class="card-header"><div class="section-kicker">Historical weekly self-enquiry focus</div></div><div class="card-body">${escapeHtml(w.weeklySEFocus)}<div class="subtle small">This retired field is kept for reference; current self-enquiry records are in the RO Journal.</div></div></section>`:''}
+ <section class="card"><div class="card-header"><div class="section-kicker">Week context</div></div><div class="card-body">${w.homework?`<div><strong>Historical homework note:</strong> ${escapeHtml(w.homework)}</div>`:''}<div style="margin-top:8px"><strong>Valued goal:</strong> ${escapeHtml(w.valuedGoal||'—')}</div>${w.majorOCThemeEnabled?`<div style="margin-top:8px"><strong>Major OC Theme:</strong> ${escapeHtml(w.majorOCTheme||'—')}</div>`:''}</div></section>
  <section class="card"><div class="card-body"><button class="btn primary wide" data-action="print-report">Export Therapist PDF</button><button class="btn wide" style="margin-top:8px" data-action="backup">Create Encrypted Backup</button></div></section>`;}
 
 function renderGuidedPractices(){
@@ -1105,8 +1102,7 @@ function renderWeekSetup(){const w=appState.currentWeek; if(isViewingPastWeek())
  ${w.setupStatus==='pending'?'<div class="notice">This new week copied the prior week&apos;s setup. Review anything that changed in therapy, then finish setup.</div>':''}
  <section class="card"><div class="card-header"><div class="section-kicker">Private targets</div></div><div class="card-body">${renderTargetEditors(w.privateTargets,'private')}<button class="btn soft wide" data-action="add-target" data-kind="private">+ Add Private Target</button></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Social signals</div></div><div class="card-body">${renderTargetEditors(w.socialTargets,'social')}<button class="btn soft wide" data-action="add-target" data-kind="social">+ Add Social Target</button></div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">Weekly focus skills</div></div><div class="card-body"><div class="checkbox-list">${SKILLS.filter(s=>s.id!=='fixed-fatalistic').map(s=>`<label class="check-row"><input type="checkbox" data-focus-skill="${s.id}" ${w.focusSkills.includes(s.id)?'checked':''}><span>${escapeHtml(s.name)}</span></label>`).join('')}</div><div class="subtle" style="margin-top:8px">Choose up to five focus skills. Other skills remain available on the daily card.</div></div></section>
- <section class="card"><div class="card-body"><div class="field"><label>Weekly self-enquiry focus</label><textarea data-week-field="weeklySEFocus">${escapeHtml(w.weeklySEFocus)}</textarea></div><div class="field"><label>Skills-class homework</label><input data-week-field="homework" value="${escapeHtml(w.homework)}"></div><div class="field"><label>Valued goal (optional)</label><input data-week-field="valuedGoal" value="${escapeHtml(w.valuedGoal)}"></div></div></section>
+ <section class="card"><div class="card-body"><div class="field"><label>Valued goal (optional)</label><input data-week-field="valuedGoal" value="${escapeHtml(w.valuedGoal||'')}"></div></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Optional RO-DBT fields</div></div><div class="card-body"><div class="checkbox-list">
    <label class="check-row"><input type="checkbox" data-week-toggle="majorOCThemeEnabled" ${w.majorOCThemeEnabled?'checked':''}><span>Major OC Theme</span></label>
    <label class="check-row"><input type="checkbox" data-week-toggle="therapyProcessEnabled" ${w.therapyProcessEnabled?'checked':''}><span>Therapy Alliance / Process Ratings</span></label>
@@ -1135,15 +1131,14 @@ function renderSetupGuide(){return `<button class="btn" data-action="back-guide"
    <ul class="guide-list"><li>0 — not present</li><li>1 — slight / low</li><li>2 — definitely present, but low level</li><li>3 — moderate</li><li>4 — severe / intense</li><li>5 — most extreme level for you</li></ul>
    <p><strong>Blank means unanswered.</strong> A 0 or No means you intentionally rated the target as absent.</p>
  </div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">5</div><div class="section-title">Add the weekly Self-Enquiry focus</div></div><div class="card-body guide-copy"><p>Enter the therapist-assigned or current self-enquiry question you are carrying or practicing this week. If you need help finding a useful question, the optional Question Finder uses general RO-DBT cues as scaffolding. The goal is to find a question with some energy—not a perfect question or an immediate answer. Save questions that emerge during practice under Questions I Discovered This Week. The diary app does not replace a private RO self-enquiry journal.</p></div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">6</div><div class="section-title">Choose weekly focus skills</div></div><div class="card-body guide-copy"><p>Select up to five skills you are actively practicing or want easy access to. You can still record any other RO skill you actually use during the week. Tap the information button beside a skill on Today for a quick reference.</p></div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">7</div><div class="section-title">Add homework and an optional valued goal</div></div><div class="card-body guide-copy"><p>Use the homework field as a reminder of the current skills-class assignment. Add a valued goal only when it is useful for the current week; it does not need to be filled in simply because the field exists.</p></div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">8</div><div class="section-title">Turn on optional RO-DBT fields only when useful</div></div><div class="card-body guide-copy">
+ <section class="card"><div class="card-header"><div class="section-kicker">5</div><div class="section-title">Enter the current therapist assignment</div></div><div class="card-body guide-copy"><p>Use one field for the current RO-DBT lesson, skill, and any assigned homework. Set it in Weekly Setup; it appears on Home with ChatGPT training and rehearsal prompts. When your therapist changes it, the app retains a basic dated history. No daily skills checklist is required.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">6</div><div class="section-title">Optional valued goal</div></div><div class="card-body guide-copy"><p>Use the valued goal field only if it supports your current week; otherwise leave it blank. Use the separate Self-Enquiry Question Finder for questions, and the RO Journal in ChatGPT for actual self-enquiry sessions.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">7</div><div class="section-title">Turn on optional RO-DBT fields only when useful</div></div><div class="card-body guide-copy">
    <p><strong>Major OC Theme:</strong> use when you and your therapist are organizing the week around a major overcontrol/social-signaling theme.</p>
    <p><strong>Therapy Alliance / Process Ratings:</strong> weekly 0–5 ratings completed just before therapy when these process questions are useful to your treatment.</p>
    <p><strong>Risk / Medication / Substance Fields:</strong> daily tracking that can be enabled when clinically relevant or requested by your therapist. RO-DBT Diary is not monitored and does not notify a therapist or emergency service.</p>
  </div></section>
- <section class="card"><div class="card-header"><div class="section-kicker">9</div><div class="section-title">Review and finish setup</div></div><div class="card-body guide-copy"><p>At the start of a new week, RO-DBT Diary can copy the prior setup. Review what changed in therapy, adjust only what needs changing, and then finish setup. Targets should evolve when the treatment focus changes.</p></div></section>
+ <section class="card"><div class="card-header"><div class="section-kicker">8</div><div class="section-title">Review and finish setup</div></div><div class="card-body guide-copy"><p>At the start of a new week, RO-DBT Diary can copy the prior setup. Review what changed in therapy, adjust only what needs changing, and then finish setup. Targets should evolve when the treatment focus changes.</p></div></section>
  <section class="card"><div class="card-header"><div class="section-kicker">Target quality</div><div class="section-title">What makes a useful target?</div></div><div class="card-body guide-copy"><ul class="guide-list">
    <li><strong>Specific:</strong> you can tell what counts and what does not.</li>
    <li><strong>Relevant:</strong> it connects to a current treatment problem, valued goal, or OC theme.</li>
@@ -1155,17 +1150,17 @@ function renderSetupGuide(){return `<button class="btn" data-action="back-guide"
 
 function renderTargetEditors(targets,kind){return targets.map(t=>`<div class="inline-edit"><div class="inline-edit-row"><input data-target-label="${t.id}" data-kind="${kind}" value="${escapeHtml(t.label)}"><select data-target-type="${t.id}" data-kind="${kind}"><option value="scale" ${t.type==='scale'?'selected':''}>0–5</option><option value="yn" ${t.type==='yn'?'selected':''}>Y/N</option></select><button class="btn danger" data-delete-target="${t.id}" data-kind="${kind}">×</button></div><textarea data-target-def="${t.id}" data-kind="${kind}" class="small">${escapeHtml(t.definition||'')}</textarea></div>`).join('');}
 
-function renderArchive(){const ids=[...appState.profile.weekIds].reverse(); return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Archive</h1><div class="subtle">Open any therapy week to review it, export its therapist PDF, or continue unfinished daily entries.</div><section class="card"><div class="card-body" id="archive-list">${ids.map(id=>`<div class="list-row archive-week-row" data-week-id="${id}"><span class="archive-week-label"><strong>Loading therapy week…</strong></span><button class="btn" data-action="open-archive" data-week-id="${id}">Open</button></div>`).join('')}</div></section>`;}
+function renderArchive(){const ids=[...appState.profile.weekIds].reverse(); return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Archive</h1><div class="subtle">Open any therapy week to review its entries or export it for ChatGPT.</div><section class="card"><div class="card-body" id="archive-list">${ids.map(id=>`<div class="list-row archive-week-row" data-week-id="${id}"><span class="archive-week-label"><strong>Loading therapy week…</strong></span><button class="btn" data-action="open-archive" data-week-id="${id}">Open</button></div>`).join('')}</div></section>`;}
 
 function renderSkillsReference(){return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">RO Skills Reference</h1><div class="subtle">Quick reference only. Use your RO-DBT manual and class materials for the full skill.</div><section class="card"><div class="card-body">${SKILLS.filter(s=>s.id!=='fixed-fatalistic').map(s=>`<div class="skill-reference-row"><div><strong>${escapeHtml(s.name)}</strong><div class="small subtle">${escapeHtml(s.reference||'')}</div><div class="small" style="margin-top:4px">${escapeHtml(s.purpose)}</div></div><button class="info-btn" aria-label="About ${escapeHtml(s.name)}" data-skill-info="${s.id}">i</button></div>`).join('')}</div></section>`;}
 
-function renderSettings(){return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Settings</h1><section class="card"><div class="card-body"><div class="field"><label>Therapy week starts</label><select id="week-start">${[[0,'Sunday'],[1,'Monday'],[2,'Tuesday'],[3,'Wednesday'],[4,'Thursday'],[5,'Friday'],[6,'Saturday']].map(([v,n])=>`<option value="${v}" ${appState.profile.therapyWeekStart===v?'selected':''}>${n}</option>`).join('')}</select><div class="subtle small">Changing this affects future weeks only.</div></div><div class="field"><label>PDF name</label><input id="pdf-name" value="${escapeHtml(appState.profile.pdfName||'')}"></div><button class="btn" data-action="change-pin">Change 4-Digit Passcode</button><button class="btn wide" style="margin-top:8px" data-action="lock-now">Lock Now</button></div></section>`;}
+function renderSettings(){return `<button class="btn" data-action="back-page">← Back</button><h1 class="page-title">Settings</h1><section class="card"><div class="card-body"><div class="field"><label>Therapy week starts</label><select id="week-start">${[[0,'Sunday'],[1,'Monday'],[2,'Tuesday'],[3,'Wednesday'],[4,'Thursday'],[5,'Friday'],[6,'Saturday']].map(([v,n])=>`<option value="${v}" ${appState.profile.therapyWeekStart===v?'selected':''}>${n}</option>`).join('')}</select><div class="subtle small">Changing this affects future weeks only.</div></div><div class="field"><label>Name</label><input id="pdf-name" value="${escapeHtml(appState.profile.pdfName||'')}"></div><button class="btn" data-action="change-pin">Change 4-Digit Passcode</button><button class="btn wide" style="margin-top:8px" data-action="lock-now">Lock Now</button></div></section>`;}
 
 function renderModal(){
   const m=appState.modal; if(!m) return '';
   if(m.type==='week-start'){
     const w=appState.currentWeek;
-    return `<div class="modal-backdrop"><div class="modal"><h2>Set Up New Week</h2><div class="subtle">Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div><p>Last week's targets, focus skills, self-enquiry question, and homework were copied forward.</p><div class="btn-row"><button class="btn primary" data-action="review-week-setup">Review & Update</button><button class="btn" data-action="keep-week-setup">Use Previous Setup</button></div></div></div>`;
+    return `<div class="modal-backdrop"><div class="modal"><h2>Set Up New Week</h2><div class="subtle">Therapy week ${fmtDate(w.startDate)} – ${fmtDate(w.endDate)}</div><p>Last week's targets, optional clinical settings, and current therapist assignment were copied forward.</p><div class="btn-row"><button class="btn primary" data-action="review-week-setup">Review & Update</button><button class="btn" data-action="keep-week-setup">Use Previous Setup</button></div></div></div>`;
   }
   if(m.type==='info'){
     const t=[...appState.currentWeek.privateTargets,...appState.currentWeek.socialTargets].find(x=>x.id===m.targetId);
@@ -1189,7 +1184,7 @@ function renderModal(){
   if(m.type==='use-se-question'){
     const q=promptById(m.questionId); if(!q) return '';
     const alreadySaved=appState.currentWeek.savedSEPrompts.includes(q.id);
-    return `<div class="modal-backdrop"><div class="modal"><h2>Use This Question</h2><div class="prompt-box">${escapeHtml(q.text)}</div><div class="subtle" style="margin-top:10px">Choose what you want to do with this question. Setting it as Weekly Focus will replace the current weekly focus.</div><div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="set-weekly-focus-from-question" data-question-id="${q.id}">Set as Weekly Focus</button><button class="btn" data-action="save-question-this-week" data-question-id="${q.id}">${alreadySaved?'Remove from This Week':'Save for This Week'}</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
+    return `<div class="modal-backdrop"><div class="modal"><h2>Use This Question</h2><div class="prompt-box">${escapeHtml(q.text)}</div><div class="subtle" style="margin-top:10px">You can copy the question for ChatGPT or save it to your private question list for this week. It will not change the therapist assignment.</div><div class="btn-row" style="margin-top:12px"><button class="btn primary" data-action="copy-se-question" data-question-id="${q.id}">Copy Question</button><button class="btn" data-action="save-question-this-week" data-question-id="${q.id}">${alreadySaved?'Remove from This Week':'Save for This Week'}</button><button class="btn" data-action="close-modal">Cancel</button></div></div></div>`;
   }
   if(m.type==='saved-questions'){
     const w=appState.currentWeek;
@@ -1418,7 +1413,7 @@ async function handleAction(a,b){
   if(a==='another-starter'){chooseQuestion(appState.seCue,'starter',appState.currentPromptId);render();return;}
   if(a==='go-one-step-further'){const starter=promptById(appState.currentPromptId);if(starter?.stage==='starter')appState.starterPromptId=starter.id;chooseQuestion(appState.seCue,'edge');render();return;}
   if(a==='use-se-question'){const id=appState.currentPromptId;appState.modal={type:'use-se-question',questionId:id};render({preserveScroll:true});return;}
-  if(a==='set-weekly-focus-from-question'){const q=promptById(b.dataset.questionId);if(q){appState.currentWeek.weeklySEFocus=q.text;queueSaveWeek();}appState.modal=null;render();return;}
+  if(a==='copy-se-question'){const q=promptById(b.dataset.questionId);if(!q)return;try{await navigator.clipboard.writeText(q.text);alert('Question copied. Paste it into your RO Journal conversation.');}catch(e){appState.modal={type:'copy-prompt',text:q.text};render({preserveScroll:true});}return;}
   if(a==='save-question-this-week'){const id=b.dataset.questionId;const arr=appState.currentWeek.savedSEPrompts;if(id){appState.currentWeek.savedSEPrompts=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];queueSaveWeek();}appState.modal=null;render();return;}
   if(a==='favorite-prompt'){const id=appState.currentPromptId;const arr=appState.profile.favoritePromptIds;appState.profile.favoritePromptIds=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];queueSaveProfile();render();return;}
   if(a==='reject-question'){const id=appState.currentPromptId;if(id&&!appState.profile.notUsefulPromptIds.includes(id))appState.profile.notUsefulPromptIds.push(id);queueSaveProfile();if(appState.seStage==='edge'&&appState.starterPromptId){appState.currentPromptId=appState.starterPromptId;appState.seStage='starter';render();}else{chooseQuestion(appState.seCue,'starter',id);render();}return;}
@@ -1559,7 +1554,7 @@ async function init(){
   if(!window.crypto?.subtle || !window.indexedDB){document.getElementById('app').innerHTML='<div class="lock-screen"><div class="lock-card"><div class="lock-title">RO-DBT Diary</div><div class="error">This browser does not support the required local security features.</div></div></div>';return;}
   for(const name of LEGACY_DB_NAMES) await deleteLegacyDatabase(name);
   db=await openDB(); const wrap=await idbGet('secure','vaultWrap'); appState.setupNeeded=!wrap; appState.pinStage=appState.setupNeeded?'setup':'unlock'; appState.locked=true; render();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.5.14').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v=0.6.1').catch(()=>{});}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){appState.hiddenAt=Date.now();}else if(appState.hiddenAt && Date.now()-appState.hiddenAt>=AUTO_LOCK_MS && !appState.locked){lockApp();}else appState.hiddenAt=null;});
 }
 
@@ -1645,7 +1640,7 @@ function renderInlineEvent(e, index) {
     <input id="event-${id}-title" class="event-input" data-event-field="title" data-event-id="${id}" value="${escapeHtml(eventTitle(e))}" placeholder="e.g. pleasant walk, work conversation">
     <label class="event-input-label" for="event-${id}-facts">What happened?</label>
     <textarea id="event-${id}-facts" class="event-textarea" data-event-field="facts" data-event-id="${id}" placeholder="A short note is enough">${escapeHtml(eventFacts(e))}</textarea>
-    <details class="event-details" data-event-expand="${id}" ${expanded ? 'open' : ''}><summary>More detail (optional)${e.discuss ? ' · therapy' : ''}${e.flag ? ' · review' : ''}</summary>
+    <details class="event-details" data-event-expand="${id}" ${expanded ? 'open' : ''}><summary>More detail (optional)${e.discuss ? ' · therapy' : ''}</summary>
       <label class="event-input-label" for="event-${id}-kind">Type (optional)</label>
       <select id="event-${id}-kind" class="event-input" data-event-field="kind" data-event-id="${id}">
         <option value="" ${!kind ? 'selected' : ''}>Not labeled</option>
@@ -1659,7 +1654,6 @@ function renderInlineEvent(e, index) {
       ${eventField(e,'results','What followed?','Immediate outcome or consequence')}
       ${eventField(e,'skills','Skills used (optional)','If any; not limited to this week')}
       <label class="event-checkbox"><input type="checkbox" data-event-discuss="${id}" ${e.discuss ? 'checked' : ''}> Discuss in Therapy</label>
-      <label class="event-checkbox"><input type="checkbox" data-event-flag="${id}" ${e.flag ? 'checked' : ''}> Flag for Weekly Review</label>
     </details>
   </div>`;
 }
@@ -1724,16 +1718,16 @@ renderWeekSetup = function() {
   const history = (appState.profile.learningFocusHistory || []).slice(-5).reverse();
   const focus = `<section class="card"><div class="card-header"><div class="section-kicker">Learning & Practice</div><div class="section-title">Current therapist assignment</div></div>
     <div class="card-body"><div class="field"><label for="learning-focus-input">RO-DBT lesson, skill or homework focus</label>
-      <input id="learning-focus-input" value="${escapeHtml(w.learningFocus || '')}" placeholder="e.g. RO-DBT Lesson 17 — ROCKs ON">
+      <textarea id="learning-focus-input" rows="3" maxlength="1000" placeholder="e.g. RO-DBT Lesson 17 — ROCKs ON, lesson components and current homework">${escapeHtml(w.learningFocus || '')}</textarea>
       <div class="subtle small">Saved when you leave the field. Changing it keeps a dated history; study and rehearsal details remain in ChatGPT.</div></div>
       ${history.length ? `<div class="subtle small">Recent focus history:</div>${history.map(x => `<div class="focus-history"><span>${escapeHtml(x.startedOn || '')}${x.replacedOn ? ` – ${escapeHtml(x.replacedOn)}` : ' – active'}</span><span>${escapeHtml(x.focus)}</span></div>`).join('')}` : ''}
     </div></section>`;
-  return html.replace('<section class="card"><div class="card-header"><div class="section-kicker">Weekly focus skills</div>',
-    `${focus}<section class="card"><div class="card-header"><div class="section-kicker">Weekly focus skills</div>`);
+  return html.replace('<section class="card"><div class="card-header"><div class="section-kicker">Private targets</div>',
+    `${focus}<section class="card"><div class="card-header"><div class="section-kicker">Private targets</div>`);
 };
 
 function changeLearningFocus(value) {
-  const focus = String(value || '').trim().slice(0,240);
+  const focus = String(value || '').trim().slice(0,1000);
   const w = appState.currentWeek;
   const before = String(w.learningFocus || '').trim();
   if (focus === before) return;
@@ -1759,7 +1753,7 @@ renderReviewEvents = function(w) {
       ${e.kind ? `<div class="subtle small">${escapeHtml(e.kind)}</div>` : ''}
       ${eventFacts(e) ? `<div class="event-note">${escapeHtml(eventFacts(e))}</div>` : ''}
       ${[['emotions','Feelings'],['body','Body'],['interpretations','Thoughts'],['urges','Urges'],['signals','Actions / signals'],['results','What followed'],['skills','Skills']].filter(([k])=>e[k]).map(([k,l])=>`<div class="event-note"><strong>${l}:</strong> ${escapeHtml(e[k])}</div>`).join('')}
-      ${e.discuss ? '<div class="flag">Discuss in Therapy</div>' : ''}${e.flag ? '<div class="flag"> · For Weekly Review</div>':''}</div>`).join('') : '<div class="subtle">No events in this view.</div>'}
+      ${e.discuss ? '<div class="flag">Discuss in Therapy</div>' : ''}</div>`).join('') : '<div class="subtle">No events in this view.</div>'}
   </div></section>`;
 };
 
@@ -1785,18 +1779,16 @@ renderArchiveModal = function(week) {
   return originalRenderArchiveModal(week).replace('data-action="export-week-report"', 'data-action="export-week-chatgpt"').replace('Export Therapist PDF', 'Export for ChatGPT');
 };
 
-const WEEKLY_CHATGPT_PROMPT = `Create a therapist-review PDF from the attached RO Diary therapy-week export. Use the included structured data as the app record, and retrieve the relevant dated entries from the Personal Growth Continuity Log and RO Journal Continuity Log in my DBT/RO-DBT/ACT project's Library. Respect the exact therapy-week start and end dates in this file. Include every configured RO target with all seven daily ratings (including 0 and No); do not turn missing answers into zeros or infer absence from empty days. Include meditation answers and recorded minutes, all recorded meaningful events and their optional details, review/therapy flags, and applicable weekly setup and review information. Include documented Skills Training, rehearsals and real-world practice from the Personal Growth Continuity Log, distinguishing learning from actual practice. For each closed RO Journal entry in the reporting period, include only its final identified edge/working question; if none was identified, give a factual summary of one or two sentences. Do not include saved/favorite Question Finder questions or automatically reproduce private journal narratives. Identify absent or unfinished continuity records rather than inventing activity. Do not add diagnoses or unsupported interpretations. Provide a readable summary followed by complete relevant daily details. Let me review the PDF before sharing it with my therapist. This JSON file is a plaintext, sensitive export, not an encrypted backup.`;
+const WEEKLY_CHATGPT_PROMPT = `Create a therapist-review PDF from the attached RO Diary therapy-week export. Use the included structured data as the app record, and retrieve the relevant dated entries from the Personal Growth Continuity Log and RO Journal Continuity Log in my DBT/RO-DBT/ACT project's Library. Respect the exact therapy-week start and end dates in this file. Include every configured RO target with all seven daily ratings (including 0 and No); do not turn missing answers into zeros or infer absence from empty days. Include meditation answers and recorded minutes, all recorded meaningful events and their optional details and therapy discussion flags, plus applicable weekly setup and review information. Treat legacy weekly skills/homework and any historical event review flag as historical-only data, not as current assignments, filters or evidence of skill practice. Include documented Skills Training, rehearsals and real-world practice from the Personal Growth Continuity Log, distinguishing learning from actual practice. For each closed RO Journal entry in the reporting period, include only its final identified edge/working question; if none was identified, give a factual summary of one or two sentences. Do not include saved/favorite/discovered Question Finder questions, legacy weekly self-enquiry focus text, or automatically reproduce private journal narratives. Identify absent or unfinished continuity records rather than inventing activity. Do not add diagnoses or unsupported interpretations. Provide a readable summary followed by complete relevant daily details. Let me review the PDF before sharing it with my therapist. This JSON file is a plaintext, sensitive export, not an encrypted backup.`;
 function exportWeekData(week, profile) {
   const data = {
     therapyWeek: {startDate:week.startDate,endDate:week.endDate,id:week.id,setupStatus:week.setupStatus||null},
     learningFocus:week.learningFocus||'', learningFocusUpdatedAt:week.learningFocusUpdatedAt||null,
     learningFocusHistory:(profile.learningFocusHistory||[]).filter(x=>x.startedOn<=week.endDate&&(!x.replacedOn||x.replacedOn>=week.startDate)),
     privateTargets:structuredClone(week.privateTargets),socialTargets:structuredClone(week.socialTargets),
-    focusSkills:structuredClone(week.focusSkills||[]),
-    focusSkillLabels:(week.focusSkills||[]).map(id=>({id,name:skillName(id)})),
-    historicalSkillsCatalog:SKILLS.map(x=>({id:x.id,name:x.name})),
+    legacyWeeklySkills:(week.focusSkills||[]).map(id=>({id,name:skillName(id)})), // Historical-only fields; no current checklist.
     ratingScaleAnchors:[...SCALE_ANCHORS],
-    homework:week.homework||'',valuedGoal:week.valuedGoal||'',
+    legacyHomework:week.homework||'',valuedGoal:week.valuedGoal||'',
     majorOCThemeEnabled:!!week.majorOCThemeEnabled,majorOCTheme:week.majorOCTheme||'',
     therapyProcessEnabled:!!week.therapyProcessEnabled,therapyProcess:structuredClone(week.therapyProcess||blankTherapyProcess()),
     riskTrackingEnabled:!!week.riskTrackingEnabled,days:{},
@@ -1815,7 +1807,7 @@ function exportWeekData(week, profile) {
       // Empty answers are not automatically converted to 0 or false.
     };
   });
-  return {format:'ro-diary-chatgpt-weekly-export',version:1,appVersion:'0.6.0-beta',exportedAt:new Date().toISOString(),
+  return {format:'ro-diary-chatgpt-weekly-export',version:1,appVersion:'0.6.1-beta',exportedAt:new Date().toISOString(),
     instructions:WEEKLY_CHATGPT_PROMPT, data};
 }
 async function downloadWeekExport(w) {
@@ -1911,10 +1903,10 @@ bindApp = function() {
     };
     el.addEventListener('input',saveField);el.addEventListener('change',saveField);
   });
-  $$('[data-event-discuss],[data-event-flag]').forEach(el=>el.addEventListener('change',()=>{
-    const d=getSelectedEntry(),id=el.dataset.eventDiscuss||el.dataset.eventFlag;
+  $$('[data-event-discuss]').forEach(el=>el.addEventListener('change',()=>{
+    const d=getSelectedEntry(),id=el.dataset.eventDiscuss;
     const e=d.events.find(x=>x.id===id);if(!e)return;
-    e[el.hasAttribute('data-event-discuss')?'discuss':'flag']=el.checked;
+    e.discuss=el.checked;
     e.modifiedAt=new Date().toISOString();d.modifiedAt=e.modifiedAt;queueSaveWeek();
   }));
 };
